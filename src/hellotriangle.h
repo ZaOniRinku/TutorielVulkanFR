@@ -1,3 +1,9 @@
+#if defined(TUTORIEL_VK_OS_WINDOWS)
+#define VK_USE_PLATFORM_WIN32_KHR
+#elif defined(TUTORIEL_VK_OS_LINUX)
+#define VK_USE_PLATFORM_XLIB_KHR
+#endif
+#include <vulkan/vulkan.h>
 #include <iostream>
 
 #define TUTORIEL_VK_CHECK(f) \
@@ -16,4 +22,10 @@ public:
 	void destroy();
 
 	bool shouldClose();
+
+private:
+	bool explicitLayerAvailable(const char* layerName);
+
+private:
+	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
 };
