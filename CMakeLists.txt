@@ -22,7 +22,12 @@ else() # Si CMake a réussi à trouver Vulkan
 	message(STATUS "Vulkan a été trouvé.") # Affiche un message de succès
 endif()
 
-add_executable(${PROJECT_NAME} src/main.cpp) # On va vouloir créer un exécutable du même nom que le projet et avec le fichier main.cpp dans le dossier src
+set(SOURCES
+	src/hellotriangle.cpp)
+set(HEADERS
+	src/hellotriangle.h)
+
+add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES} ${HEADERS}) # On va vouloir créer un exécutable du même nom que le projet et avec les fichiers du dossier src
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan) # On lie GLFW et Vulkan à notre projet
 
