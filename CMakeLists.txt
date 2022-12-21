@@ -13,6 +13,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux") # Si nous sommes sur Linux
 	list(APPEND TUTORIEL_VK_DEFINES TUTORIEL_VK_OS_LINUX) # On ajoute à TUTORIEL_VK_DEFINES la constante TUTORIEL_VK_OS_LINUX qu'on utilisera lorsqu'on souhaitera écrire du code spécifique à Linux
 endif()
 
+add_subdirectory(external/glfw) # On appelle le fichier CMake de GLFW
+
 find_package(Vulkan) # On demande à CMake de chercher Vulkan
 if(NOT Vulkan_FOUND) # Si CMake n'a pas réussi à trouver Vulkan
 	message(FATAL_ERROR "Impossible de trouver Vulkan.") # Arrête CMake et affiche un message d'erreur
@@ -22,7 +24,7 @@ endif()
 
 add_executable(${PROJECT_NAME} src/main.cpp) # On va vouloir créer un exécutable du même nom que le projet et avec le fichier main.cpp dans le dossier src
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan) # On lie Vulkan à notre projet
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan) # On lie GLFW et Vulkan à notre projet
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	${TUTORIEL_VK_DEFINES}) # On ajoute toutes les définitions qu'on a créées plus haut
