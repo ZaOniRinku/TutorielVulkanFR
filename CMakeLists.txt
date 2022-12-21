@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.7 FATAL_ERROR) # Demande au moins la version 3.7 de CMake, puisque find_package(Vulkan) n'est disponible qu'à partir de la version 3.7 de CMake
-set(NAME TutorielVulkan) # Crée une variable CMake s'appelant NAME contenant TutorielVulkan, le nom du projet
+set(NAME TutorielVulkanFR) # Crée une variable CMake s'appelant NAME contenant TutorielVulkanFR, le nom du projet
 project(${NAME} VERSION 0.0.1 LANGUAGES C CXX) # Définit un nouveau projet utilisant le nom défini à la ligne précédente, en version 0.0.1 (ce n'est pas important) et qui utilisera du C et du C++
 
 set(CMAKE_CXX_STANDARD 17) # Définit le standard de C++ utilisé comme étant C++17
