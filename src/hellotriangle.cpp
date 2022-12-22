@@ -278,7 +278,23 @@ void HelloTriangle::init() {
 
 	m_swapchainImageViews.resize(m_swapchainImageCount);
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
-
+		VkImageViewCreateInfo swapchainImageViewCreateInfo = {};
+		swapchainImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		swapchainImageViewCreateInfo.pNext = nullptr;
+		swapchainImageViewCreateInfo.flags = 0;
+		swapchainImageViewCreateInfo.image = m_swapchainImages[i];
+		swapchainImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		swapchainImageViewCreateInfo.format = swapchainFormat;
+		swapchainImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+		swapchainImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+		swapchainImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+		swapchainImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+		swapchainImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		swapchainImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+		swapchainImageViewCreateInfo.subresourceRange.levelCount = 1;
+		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1;
+		TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
 	}
 }
 
@@ -288,6 +304,11 @@ void HelloTriangle::update() {
 }
 
 void HelloTriangle::destroy() {
+	// Destruction des vues des images de la swapchain
+	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
+		vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
+	}
+
 	// Destruction de la swapchain
 	vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
 
