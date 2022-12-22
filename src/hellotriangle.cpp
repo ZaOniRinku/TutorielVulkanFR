@@ -3,6 +3,7 @@
 #include <vector>
 
 void HelloTriangle::init() {
+	// Creation de l'instance
 	VkApplicationInfo applicationInfo = {};
 	applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	applicationInfo.pNext = nullptr;
