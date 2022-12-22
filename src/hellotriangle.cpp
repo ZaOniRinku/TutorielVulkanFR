@@ -164,6 +164,49 @@ void HelloTriangle::init() {
 	std::cout << "Nom du GPU : " << physicalDeviceProperties2.properties.deviceName << std::endl;
 	std::cout << "Type du GPU : " << physicalDeviceType << std::endl;
 	std::cout << "Version du driver : " << driverVersion << std::endl;
+
+	// Trouver une famille de queues supportant les operations graphiques
+	uint32_t queueFamilyPropertyCount;
+	vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyPropertyCount, nullptr);
+	std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyPropertyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyPropertyCount, queueFamilyProperties.data());
+
+	m_graphicsQueueFamilyIndex = 0;
+	for (const VkQueueFamilyProperties& queueFamilyProperty : queueFamilyProperties) {
+		if (queueFamilyProperty.queueCount > 0 && queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			VkBool32 presentSupport;
+			vkGetPhysicalDeviceSurfaceSupportKHR(m_physicalDevice, m_graphicsQueueFamilyIndex, m_surface, &presentSupport);
+			if (presentSupport) {
+				break;
+			}
+		}
+		m_graphicsQueueFamilyIndex++;
+	}
+
+	// Creation du device logique
+	float queuePriority = 1.0f;
+	VkDeviceQueueCreateInfo deviceQueueCreateInfo = {};
+	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	deviceQueueCreateInfo.pNext = nullptr;
+	deviceQueueCreateInfo.flags = 0;
+	deviceQueueCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+	deviceQueueCreateInfo.queueCount = 1;
+	deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+	VkDeviceCreateInfo deviceCreateInfo = {};
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pNext = nullptr;
+	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+	deviceCreateInfo.enabledLayerCount = 0;
+	deviceCreateInfo.ppEnabledLayerNames = nullptr;
+	deviceCreateInfo.enabledExtensionCount = 0;
+	deviceCreateInfo.ppEnabledExtensionNames = nullptr;
+	deviceCreateInfo.pEnabledFeatures = nullptr;
+	TUTORIEL_VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
+
+	// Recuperation de la queue creee
+	vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
 }
 
 void HelloTriangle::update() {
@@ -172,6 +215,9 @@ void HelloTriangle::update() {
 }
 
 void HelloTriangle::destroy() {
+	// Destruction du device logique
+	vkDestroyDevice(m_device, nullptr);
+
 	// Destruction de la surface
 	vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
 

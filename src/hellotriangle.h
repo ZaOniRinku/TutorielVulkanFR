@@ -40,4 +40,7 @@ private:
 #endif
 
 	VkPhysicalDevice m_physicalDevice;
+	VkDevice m_device;
+	uint32_t m_graphicsQueueFamilyIndex;
+	VkQueue m_graphicsQueue;
 };
