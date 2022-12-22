@@ -1,4 +1,5 @@
 #pragma once
+#include "../external/glfw/include/GLFW/glfw3.h"
 #if defined(TUTORIEL_VK_OS_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(TUTORIEL_VK_OS_LINUX)
@@ -31,4 +32,6 @@ private:
 private:
 	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
 	VkDebugUtilsMessengerEXT m_debugMessenger;
+
+	GLFWwindow* m_window;
 };
