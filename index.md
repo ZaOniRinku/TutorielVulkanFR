@@ -8,3 +8,5 @@
 ### Partie 1 : Dessiner un triangle
 - [1.1 - Structure du programme](partie1/1.md)
 - [1.2 - Création d'une instance](partie1/2.md)
+- [1.3 - La surface de la fenêtre](partie1/3.md)
+- [1.4 - Choix d'un GPU et device logique](partie1/4.md)
