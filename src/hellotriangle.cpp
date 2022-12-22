@@ -106,7 +106,7 @@ void HelloTriangle::init() {
 	TUTORIEL_VK_CHECK(createXlibSurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
 #endif
 
-	// Sélection du GPU
+	// Selection du GPU
 	uint32_t physicalDeviceCount;
 	vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
 	if (physicalDeviceCount == 0) {
