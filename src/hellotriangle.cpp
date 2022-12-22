@@ -317,7 +317,7 @@ bool HelloTriangle::explicitLayerAvailable(const char* layerName) {
 		}
 	}
 
-	std::cout << "Layer " << layerName << "n'est pas disponible.";
+	std::cout << "Layer " << layerName << " n'est pas disponible.";
 	return false;
 }
 
