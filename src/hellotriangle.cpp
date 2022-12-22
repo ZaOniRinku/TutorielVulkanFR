@@ -78,6 +78,7 @@ void HelloTriangle::init() {
 	if (!glfwInit()) {
 		std::cout << "Une erreur a eu lieu lors de l'initialisation de GLFW." << std::endl;
 	}
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	m_window = glfwCreateWindow(1280, 720, "TutorielVulkanFR", nullptr, nullptr);
 
 	// Creation de la surface
