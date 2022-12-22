@@ -34,4 +34,8 @@ private:
 	VkDebugUtilsMessengerEXT m_debugMessenger;
 
 	GLFWwindow* m_window;
+	VkSurfaceKHR m_surface;
+#if defined(TUTORIEL_VK_OS_LINUX)
+	Display* m_display;
+#endif
 };

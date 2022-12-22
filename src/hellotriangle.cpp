@@ -1,4 +1,10 @@
 #include "hellotriangle.h"
+#if defined(TUTORIEL_VK_OS_WINDOWS)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#elif defined(TUTORIEL_VK_OS_LINUX)
+#define GLFW_EXPOSE_NATIVE_X11
+#endif
+#include "../external/glfw/include/GLFW/glfw3native.h"
 #include <array>
 #include <vector>
 
@@ -73,6 +79,32 @@ void HelloTriangle::init() {
 		std::cout << "Une erreur a eu lieu lors de l'initialisation de GLFW." << std::endl;
 	}
 	m_window = glfwCreateWindow(1280, 720, "TutorielVulkanFR", nullptr, nullptr);
+
+	// Creation de la surface
+#if defined(TUTORIEL_VK_OS_WINDOWS)
+	HWND handle = glfwGetWin32Window(m_window);
+	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
+	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surfaceCreateInfo.pNext = nullptr;
+	surfaceCreateInfo.flags = 0;
+	surfaceCreateInfo.hinstance = reinterpret_cast<HINSTANCE>(GetWindowLongPtr(handle, GWLP_HINSTANCE));
+	surfaceCreateInfo.hwnd = handle;
+
+	auto createWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR");
+	TUTORIEL_VK_CHECK(createWin32SurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
+#elif defined(TUTORIEL_VK_OS_LINUX)
+	m_display = XOpenDisplay(NULL);
+	Window handle = glfwGetX11Window(m_window);
+	VkXlibSurfaceCreateInfoKHR surfaceCreateInfo = {};
+	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+	surfaceCreateInfo.pNext = nullptr;
+	surfaceCreateInfo.flags = 0;
+	surfaceCreateInfo.dpy = m_display;
+	surfaceCreateInfo.window = handle;
+
+	auto createXlibSurfaceKHR = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkCreateXlibSurfaceKHR");
+	TUTORIEL_VK_CHECK(createXlibSurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
+#endif
 }
 
 void HelloTriangle::update() {
@@ -81,6 +113,14 @@ void HelloTriangle::update() {
 }
 
 void HelloTriangle::destroy() {
+	// Destruction de la surface
+	vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
+
+#if defined(TUTORIEL_VK_OS_LINUX)
+	// Fermeture du Display Xlib
+	XCloseDisplay(m_display);
+#endif
+
 	// Destruction de la fenetre
 	glfwTerminate();
 
