@@ -1,3 +1,4 @@
+#pragma once
 #if defined(TUTORIEL_VK_OS_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(TUTORIEL_VK_OS_LINUX)
@@ -25,7 +26,9 @@ public:
 
 private:
 	bool explicitLayerAvailable(const char* layerName);
+	bool instanceExtensionAvailable(const char* extensionName);
 
 private:
 	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
+	VkDebugUtilsMessengerEXT m_debugMessenger;
 };
