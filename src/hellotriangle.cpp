@@ -67,20 +67,33 @@ void HelloTriangle::init() {
 
 	auto createDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
 	TUTORIEL_VK_CHECK(createDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &m_debugMessenger));
+
+	// Creation de la fenetre
+	if (!glfwInit()) {
+		std::cout << "Une erreur a eu lieu lors de l'initialisation de GLFW." << std::endl;
+	}
+	m_window = glfwCreateWindow(1280, 720, "TutorielVulkanFR", nullptr, nullptr);
 }
 
 void HelloTriangle::update() {
+	// Recuperation des evenements sur les fenetres
+	glfwPollEvents();
 }
 
 void HelloTriangle::destroy() {
+	// Destruction de la fenetre
+	glfwTerminate();
+
+	// Destruction du messager de debug
 	auto destroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
 	destroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
 
+	// Destruction de l'instance
 	vkDestroyInstance(m_instance, nullptr);
 }
 
 bool HelloTriangle::shouldClose() {
-	return false;
+	return glfwWindowShouldClose(m_window);
 }
 
 bool HelloTriangle::explicitLayerAvailable(const char* layerName) {
