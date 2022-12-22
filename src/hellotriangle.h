@@ -47,6 +47,7 @@ private:
 	VkQueue m_graphicsQueue;
 
 	VkSwapchainKHR m_swapchain;
+	uint32_t m_swapchainImageCount;
 	std::vector<VkImage> m_swapchainImages;
 	std::vector<VkImageView> m_swapchainImageViews;
 };

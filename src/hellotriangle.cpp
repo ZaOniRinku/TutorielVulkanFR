@@ -199,12 +199,14 @@ void HelloTriangle::init() {
 	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
 	deviceCreateInfo.enabledLayerCount = 0;
 	deviceCreateInfo.ppEnabledLayerNames = nullptr;
+
 	std::vector<const char*> deviceExtensions;
 	if (deviceExtensionAvailable("VK_KHR_swapchain")) {
 		deviceExtensions.push_back("VK_KHR_swapchain");
 	}
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
 	deviceCreateInfo.pEnabledFeatures = nullptr;
 	TUTORIEL_VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
 
@@ -226,7 +228,7 @@ void HelloTriangle::init() {
 	VkFormat swapchainFormat = surfaceFormats[0].format;
 	VkColorSpaceKHR swapchainColorSpace = surfaceFormats[0].colorSpace;
 	for (const VkSurfaceFormatKHR& surfaceFormat : surfaceFormats) {
-		if (surfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormat.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
+		if (surfaceFormat.format == VK_FORMAT_R8G8B8A8_SRGB && surfaceFormat.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
 			swapchainFormat = surfaceFormat.format;
 			swapchainColorSpace = surfaceFormat.colorSpace;
 			break;
@@ -268,6 +270,15 @@ void HelloTriangle::init() {
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 	TUTORIEL_VK_CHECK(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain));
+
+	TUTORIEL_VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, nullptr));
+	m_swapchainImages.resize(m_swapchainImageCount);
+	TUTORIEL_VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, m_swapchainImages.data()));
+
+	m_swapchainImageViews.resize(m_swapchainImageCount);
+	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
+
+	}
 }
 
 void HelloTriangle::update() {
