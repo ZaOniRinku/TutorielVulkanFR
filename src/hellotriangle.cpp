@@ -7,6 +7,7 @@
 #include "../external/glfw/include/GLFW/glfw3native.h"
 #include <array>
 #include <vector>
+#include <string>
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 	std::cout << pCallbackData->pMessage << std::endl;
@@ -105,6 +106,64 @@ void HelloTriangle::init() {
 	auto createXlibSurfaceKHR = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkCreateXlibSurfaceKHR");
 	TUTORIEL_VK_CHECK(createXlibSurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
 #endif
+
+	// Sélection du GPU
+	uint32_t physicalDeviceCount;
+	vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
+	if (physicalDeviceCount == 0) {
+		std::cout << "Aucun GPU supportant Vulkan n'a ete trouve." << std::endl;
+		exit(1);
+	}
+	std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+	vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data());
+
+	m_physicalDevice = physicalDevices[0];
+
+	// Afficher quelques informations sur le GPU choisi
+	VkPhysicalDeviceProperties2 physicalDeviceProperties2 = {};
+	physicalDeviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	physicalDeviceProperties2.pNext = nullptr;
+	vkGetPhysicalDeviceProperties2(m_physicalDevice, &physicalDeviceProperties2);
+
+	std::string physicalDeviceType;
+	switch (physicalDeviceProperties2.properties.deviceType) {
+	case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+		physicalDeviceType = "Autre";
+		break;
+	case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+		physicalDeviceType = "Integre";
+		break;
+	case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+		physicalDeviceType = "Discret";
+		break;
+	case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+		physicalDeviceType = "Virtuel";
+		break;
+	case VK_PHYSICAL_DEVICE_TYPE_CPU:
+		physicalDeviceType = "CPU";
+		break;
+	}
+
+	std::string driverVersion = std::to_string(VK_API_VERSION_MAJOR(physicalDeviceProperties2.properties.driverVersion)) + "."
+		+ std::to_string(VK_API_VERSION_MINOR(physicalDeviceProperties2.properties.driverVersion)) + "."
+		+ std::to_string(VK_API_VERSION_PATCH(physicalDeviceProperties2.properties.driverVersion));
+	if (physicalDeviceProperties2.properties.vendorID == 4318) { // NVIDIA
+		uint32_t major = (physicalDeviceProperties2.properties.driverVersion >> 22) & 0x3ff;
+		uint32_t minor = (physicalDeviceProperties2.properties.driverVersion >> 14) & 0x0ff;
+		uint32_t patch = (physicalDeviceProperties2.properties.driverVersion >> 6) & 0x0ff;
+		driverVersion = std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
+	}
+#if defined(NTSH_OS_WINDOWS)
+	else if (physicalDeviceProperties2.properties.vendorID == 0x8086) { // Intel
+		uint32_t major = (physicalDeviceProperties2.properties.driverVersion >> 14);
+		uint32_t minor = (physicalDeviceProperties2.properties.driverVersion) & 0x3fff;
+		driverVersion = std::to_string(major) + "." + std::to_string(minor);
+	}
+#endif
+
+	std::cout << "Nom du GPU : " << physicalDeviceProperties2.properties.deviceName << std::endl;
+	std::cout << "Type du GPU : " << physicalDeviceType << std::endl;
+	std::cout << "Version du driver : " << driverVersion << std::endl;
 }
 
 void HelloTriangle::update() {

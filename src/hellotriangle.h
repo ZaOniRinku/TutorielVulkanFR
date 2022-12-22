@@ -38,4 +38,6 @@ private:
 #if defined(TUTORIEL_VK_OS_LINUX)
 	Display* m_display;
 #endif
+
+	VkPhysicalDevice m_physicalDevice;
 };
