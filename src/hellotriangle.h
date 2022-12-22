@@ -7,6 +7,7 @@
 #endif
 #include <vulkan/vulkan.h>
 #include <iostream>
+#include <vector>
 
 #define TUTORIEL_VK_CHECK(f) \
 	do { \
@@ -28,6 +29,7 @@ public:
 private:
 	bool explicitLayerAvailable(const char* layerName);
 	bool instanceExtensionAvailable(const char* extensionName);
+	bool deviceExtensionAvailable(const char* extensionName);
 
 private:
 	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
@@ -43,4 +45,8 @@ private:
 	VkDevice m_device;
 	uint32_t m_graphicsQueueFamilyIndex;
 	VkQueue m_graphicsQueue;
+
+	VkSwapchainKHR m_swapchain;
+	std::vector<VkImage> m_swapchainImages;
+	std::vector<VkImageView> m_swapchainImageViews;
 };
