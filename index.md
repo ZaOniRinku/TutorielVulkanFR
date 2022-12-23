@@ -13,3 +13,4 @@
 - [1.5 - La swapchain](partie1/5.md)
 - [1.6 - La pipeline graphique](partie1/6.md)
 	- [1.6.1 - Écriture et compilation des shaders](partie1/6/1.md)
+	- [1.6.2 - Vertices en entrée](partie1/6/2.md)
