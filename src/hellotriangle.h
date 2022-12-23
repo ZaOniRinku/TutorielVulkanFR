@@ -52,4 +52,5 @@ private:
 	std::vector<VkImageView> m_swapchainImageViews;
 
 	VkPipeline m_graphicsPipeline;
+	VkPipelineLayout m_graphicsPipelineLayout;
 };
