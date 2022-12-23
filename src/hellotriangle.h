@@ -50,4 +50,6 @@ private:
 	uint32_t m_swapchainImageCount;
 	std::vector<VkImage> m_swapchainImages;
 	std::vector<VkImageView> m_swapchainImageViews;
+
+	VkPipeline m_graphicsPipeline;
 };
