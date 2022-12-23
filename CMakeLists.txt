@@ -14,6 +14,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux") # Si nous sommes sur Linux
 endif()
 
 add_subdirectory(external/glfw) # On appelle le fichier CMake de GLFW
+add_subdirectory(external/glslang) # On appelle le fichier CMake de Glslang
 
 find_package(Vulkan) # On demande à CMake de chercher Vulkan
 if(NOT Vulkan_FOUND) # Si CMake n'a pas réussi à trouver Vulkan
@@ -29,7 +30,7 @@ set(HEADERS
 
 add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES} ${HEADERS}) # On va vouloir créer un exécutable du même nom que le projet et avec les fichiers du dossier src
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan) # On lie GLFW et Vulkan à notre projet
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw glslang SPIRV Vulkan::Vulkan) # On lie GLFW, glslang, SPIRV (inclut dans Glslang) et Vulkan à notre projet
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	${TUTORIEL_VK_DEFINES}) # On ajoute toutes les définitions qu'on a créées plus haut
