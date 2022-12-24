@@ -754,6 +754,9 @@ void HelloTriangle::update() {
 }
 
 void HelloTriangle::destroy() {
+	// Attente que la queue du GPU ne soit plus utilisée
+	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+
 	// Destruction des objets de synchronisation
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
 		vkDestroySemaphore(m_device, m_renderCompletedSemaphores[i], nullptr);
