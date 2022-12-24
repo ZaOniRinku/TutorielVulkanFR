@@ -1,4 +1,4 @@
-# Tutoriel Vulkan en français
+# Tutoriel pour bien débuter à Vulkan
 
 ## Sommaire
 ### Partie 0 : Introduction
