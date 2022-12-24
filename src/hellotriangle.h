@@ -76,4 +76,8 @@ private:
 
 	std::vector<VkCommandPool> m_renderingCommandPools;
 	std::vector<VkCommandBuffer> m_renderingCommandBuffers;
+
+	std::vector<VkFence> m_fences;
+	std::vector<VkSemaphore> m_acquireCompletedSemaphores;
+	std::vector<VkSemaphore> m_renderCompletedSemaphores;
 };

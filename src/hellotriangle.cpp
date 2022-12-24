@@ -556,6 +556,29 @@ void HelloTriangle::init() {
 		commandBufferAllocateInfo.commandPool = m_renderingCommandPools[i];
 		TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_renderingCommandBuffers[i]));
 	}
+
+	// Creation des objets de synchronisation
+	m_fences.resize(m_framesInFlight);
+	m_acquireCompletedSemaphores.resize(m_framesInFlight);
+	m_renderCompletedSemaphores.resize(m_swapchainImageCount);
+
+	VkFenceCreateInfo fenceCreateInfo = {};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.pNext = nullptr;
+	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreCreateInfo.pNext = nullptr;
+	semaphoreCreateInfo.flags = 0;
+
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		TUTORIEL_VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_fences[i]));
+		TUTORIEL_VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_acquireCompletedSemaphores[i]));
+	}
+	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
+		TUTORIEL_VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_renderCompletedSemaphores[i]));
+	}
 }
 
 void HelloTriangle::update() {
@@ -564,6 +587,16 @@ void HelloTriangle::update() {
 }
 
 void HelloTriangle::destroy() {
+	// Destruction des objets de synchronisation
+	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
+		vkDestroySemaphore(m_device, m_renderCompletedSemaphores[i], nullptr);
+	}
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		vkDestroySemaphore(m_device, m_acquireCompletedSemaphores[i], nullptr);
+
+		vkDestroyFence(m_device, m_fences[i], nullptr);
+	}
+
 	// Destruction des command pools
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
 		vkDestroyCommandPool(m_device, m_renderingCommandPools[i], nullptr);
