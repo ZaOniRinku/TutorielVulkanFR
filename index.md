@@ -22,3 +22,4 @@
 - [1.7 - Double buffering et Command Buffer](partie1/7.md)
 - [1.8 - Objets de synchronisation](partie1/8.md)
 - [1.9 - La boucle de rendu](partie1/9.md)
+- [1.10 - Redimensionnement de la fenêtre et recréation de la swapchain](partie1/10.md)
