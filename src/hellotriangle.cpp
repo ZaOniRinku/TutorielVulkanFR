@@ -310,6 +310,11 @@ void HelloTriangle::init() {
 	m_swapchainImages.resize(m_swapchainImageCount);
 	TUTORIEL_VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, m_swapchainImages.data()));
 
+	// Le nombre de frames-in-flight ne doit pas etre superieur au nombre d'images dans la swapchain
+	if (m_framesInFlight > m_swapchainImageCount) {
+		m_framesInFlight = m_swapchainImageCount;
+	}
+
 	m_swapchainImageViews.resize(m_swapchainImageCount);
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
 		VkImageViewCreateInfo swapchainImageViewCreateInfo = {};
@@ -525,8 +530,32 @@ void HelloTriangle::init() {
 	graphicsPipelineCreateInfo.basePipelineIndex = 0;
 	TUTORIEL_VK_CHECK(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_graphicsPipeline));
 
+	// Destruction des modules de shaders
 	vkDestroyShaderModule(m_device, fragmentShaderModule, nullptr);
 	vkDestroyShaderModule(m_device, vertexShaderModule, nullptr);
+
+	// Creation des command pools et allocation des command buffers
+	m_renderingCommandPools.resize(m_framesInFlight);
+	m_renderingCommandBuffers.resize(m_framesInFlight);
+
+	VkCommandPoolCreateInfo commandPoolCreateInfo = {};
+	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.pNext = nullptr;
+	commandPoolCreateInfo.flags = 0;
+	commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
+	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.pNext = nullptr;
+	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.commandBufferCount = 1;
+
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_renderingCommandPools[i]));
+
+		commandBufferAllocateInfo.commandPool = m_renderingCommandPools[i];
+		TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_renderingCommandBuffers[i]));
+	}
 }
 
 void HelloTriangle::update() {
@@ -535,6 +564,11 @@ void HelloTriangle::update() {
 }
 
 void HelloTriangle::destroy() {
+	// Destruction des command pools
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		vkDestroyCommandPool(m_device, m_renderingCommandPools[i], nullptr);
+	}
+
 	// Destruction de la pipeline graphique
 	vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
 

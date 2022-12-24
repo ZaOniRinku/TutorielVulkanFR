@@ -70,4 +70,10 @@ private:
 	VkRect2D m_scissor;
 
 	bool m_glslangInitialized = false;
+
+	uint32_t m_framesInFlight = 2;
+	uint32_t m_currentFrameInFlight;
+
+	std::vector<VkCommandPool> m_renderingCommandPools;
+	std::vector<VkCommandBuffer> m_renderingCommandBuffers;
 };
