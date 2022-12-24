@@ -21,3 +21,4 @@
 	- [1.6.7 - Création de la pipeline graphique](partie1/6/7.md)
 - [1.7 - Double buffering et commandes de rendu](partie1/7.md)
 - [1.8 - Objets de synchronisation](partie1/8.md)
+- [1.9 - La boucle de rendu](partie1/9.md)
