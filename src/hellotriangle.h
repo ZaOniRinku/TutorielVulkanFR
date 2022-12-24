@@ -42,6 +42,7 @@ private:
 	std::string readBinaryFile(const std::string& filePath);
 	std::string readAsciiFile(const std::string& filePath);
 	std::vector<uint32_t> compileShaderFile(const std::string& shaderCode, ShaderType shaderType);
+	void createSwapchain(VkSwapchainKHR oldSwapchain);
 
 private:
 	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
@@ -60,6 +61,7 @@ private:
 
 	VkSwapchainKHR m_swapchain;
 	uint32_t m_swapchainImageCount;
+	VkFormat m_swapchainFormat;
 	std::vector<VkImage> m_swapchainImages;
 	std::vector<VkImageView> m_swapchainImageViews;
 
