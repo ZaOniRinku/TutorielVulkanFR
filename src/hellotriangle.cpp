@@ -10,6 +10,7 @@
 #include "../external/glslang/StandAlone/DirStackFileIncluder.h"
 #include <array>
 #include <fstream>
+#include <limits>
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 	std::cout << pCallbackData->pMessage << std::endl;
@@ -201,9 +202,14 @@ void HelloTriangle::init() {
 	physicalDeviceDynamicRenderingFeatures.pNext = nullptr;
 	physicalDeviceDynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 
+	VkPhysicalDeviceSynchronization2Features physicalDeviceSynchronization2Features = {};
+	physicalDeviceSynchronization2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+	physicalDeviceSynchronization2Features.pNext = &physicalDeviceDynamicRenderingFeatures;
+	physicalDeviceSynchronization2Features.synchronization2 = VK_TRUE;
+
 	VkDeviceCreateInfo deviceCreateInfo = {};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	deviceCreateInfo.pNext = &physicalDeviceDynamicRenderingFeatures;
+	deviceCreateInfo.pNext = &physicalDeviceSynchronization2Features;
 	deviceCreateInfo.queueCreateInfoCount = 1;
 	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
 	deviceCreateInfo.enabledLayerCount = 0;
@@ -221,6 +227,9 @@ void HelloTriangle::init() {
 	}
 	if (deviceExtensionAvailable("VK_KHR_dynamic_rendering")) {
 		deviceExtensions.push_back("VK_KHR_dynamic_rendering");
+	}
+	if (deviceExtensionAvailable("VK_KHR_synchronization2")) {
+		deviceExtensions.push_back("VK_KHR_synchronization2");
 	}
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -579,11 +588,137 @@ void HelloTriangle::init() {
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
 		TUTORIEL_VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_renderCompletedSemaphores[i]));
 	}
+
+	// Chargement de fonctions utilisees lors de l'enregistrement des commandes
+	m_vkCmdPipelineBarrier2KHR = (PFN_vkCmdPipelineBarrier2KHR)vkGetDeviceProcAddr(m_device, "vkCmdPipelineBarrier2KHR");
+	m_vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(m_device, "vkCmdBeginRenderingKHR");
+	m_vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(m_device, "vkCmdEndRenderingKHR");
 }
 
 void HelloTriangle::update() {
 	// Recuperation des evenements sur les fenetres
 	glfwPollEvents();
+
+	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &m_fences[m_currentFrameInFlight], VK_TRUE, std::numeric_limits<uint64_t>::max()));
+
+	// Recuperation d'un indice d'une image libre de la swapchain
+	uint32_t imageIndex;
+	TUTORIEL_VK_CHECK(vkAcquireNextImageKHR(m_device, m_swapchain, std::numeric_limits<uint64_t>::max(), m_acquireCompletedSemaphores[m_currentFrameInFlight], VK_NULL_HANDLE, &imageIndex));
+
+	// Reinitialisation du command buffer alloue avec le command pool
+	TUTORIEL_VK_CHECK(vkResetCommandPool(m_device, m_renderingCommandPools[m_currentFrameInFlight], 0));
+
+	// Debut de l'enregistrement du command buffer
+	VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	commandBufferBeginInfo.pNext = nullptr;
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	TUTORIEL_VK_CHECK(vkBeginCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight], &commandBufferBeginInfo));
+
+	// Transition de layout VK_IMAGE_LAYOUT_UNDEFINED -> VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	VkImageMemoryBarrier2 undefinedToColorAttachmentOptimalImageMemoryBarrier = {};
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.pNext = nullptr;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.srcAccessMask = 0;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.srcQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.dstQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.image = m_swapchainImages[imageIndex];
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.subresourceRange.levelCount = 1;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	undefinedToColorAttachmentOptimalImageMemoryBarrier.subresourceRange.layerCount = 1;
+
+	VkDependencyInfo undefinedToColorAttachmentOptimalDependencyInfo = {};
+	undefinedToColorAttachmentOptimalDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	undefinedToColorAttachmentOptimalDependencyInfo.pNext = nullptr;
+	undefinedToColorAttachmentOptimalDependencyInfo.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	undefinedToColorAttachmentOptimalDependencyInfo.memoryBarrierCount = 0;
+	undefinedToColorAttachmentOptimalDependencyInfo.pMemoryBarriers = nullptr;
+	undefinedToColorAttachmentOptimalDependencyInfo.bufferMemoryBarrierCount = 0;
+	undefinedToColorAttachmentOptimalDependencyInfo.pBufferMemoryBarriers = nullptr;
+	undefinedToColorAttachmentOptimalDependencyInfo.imageMemoryBarrierCount = 1;
+	undefinedToColorAttachmentOptimalDependencyInfo.pImageMemoryBarriers = &undefinedToColorAttachmentOptimalImageMemoryBarrier;
+
+	m_vkCmdPipelineBarrier2KHR(m_renderingCommandBuffers[m_currentFrameInFlight], &undefinedToColorAttachmentOptimalDependencyInfo);
+
+	// Debut de la passe de rendu
+	VkRenderingAttachmentInfo renderingAttachmentInfo = {};
+	renderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	renderingAttachmentInfo.pNext = nullptr;
+	renderingAttachmentInfo.imageView = m_swapchainImageViews[imageIndex];
+	renderingAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	renderingAttachmentInfo.resolveMode = VK_RESOLVE_MODE_NONE;
+	renderingAttachmentInfo.resolveImageView = VK_NULL_HANDLE;
+	renderingAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	renderingAttachmentInfo.clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	renderingAttachmentInfo.clearValue.depthStencil = { 0.0f, 0 };
+
+	VkRenderingInfo renderingInfo = {};
+	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	renderingInfo.pNext = nullptr;
+	renderingInfo.flags = 0;
+	renderingInfo.renderArea = m_scissor;
+	renderingInfo.layerCount = 1;
+	renderingInfo.viewMask = 0;
+	renderingInfo.colorAttachmentCount = 1;
+	renderingInfo.pColorAttachments = &renderingAttachmentInfo;
+	renderingInfo.pDepthAttachment = nullptr;
+	renderingInfo.pStencilAttachment = nullptr;
+	m_vkCmdBeginRenderingKHR(m_renderingCommandBuffers[m_currentFrameInFlight], &renderingInfo);
+
+	// Lien de la pipeline graphique
+	vkCmdBindPipeline(m_renderingCommandBuffers[m_currentFrameInFlight], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+	vkCmdSetViewport(m_renderingCommandBuffers[m_currentFrameInFlight], 0, 1, &m_viewport);
+	vkCmdSetScissor(m_renderingCommandBuffers[m_currentFrameInFlight], 0, 1, &m_scissor);
+
+	// Dessin
+	vkCmdDraw(m_renderingCommandBuffers[m_currentFrameInFlight], 3, 1, 0, 0);
+
+	// Fin de la passe de rendu
+	m_vkCmdEndRenderingKHR(m_renderingCommandBuffers[m_currentFrameInFlight]);
+
+	// Transition de layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL -> VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+	VkImageMemoryBarrier2 colorAttachmentOptimalToPresentSrcImageMemoryBarrier = {};
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.pNext = nullptr;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.dstAccessMask = 0;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.srcQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.dstQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.image = m_swapchainImages[imageIndex];
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.subresourceRange.levelCount = 1;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	colorAttachmentOptimalToPresentSrcImageMemoryBarrier.subresourceRange.layerCount = 1;
+
+	VkDependencyInfo colorAttachmentOptimalToPresentSrcDependencyInfo = {};
+	colorAttachmentOptimalToPresentSrcDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.pNext = nullptr;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.memoryBarrierCount = 0;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.pMemoryBarriers = nullptr;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.bufferMemoryBarrierCount = 0;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.pBufferMemoryBarriers = nullptr;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.imageMemoryBarrierCount = 1;
+	colorAttachmentOptimalToPresentSrcDependencyInfo.pImageMemoryBarriers = &colorAttachmentOptimalToPresentSrcImageMemoryBarrier;
+
+	m_vkCmdPipelineBarrier2KHR(m_renderingCommandBuffers[m_currentFrameInFlight], &colorAttachmentOptimalToPresentSrcDependencyInfo);
+
+	// Fin de l'enregistrement du command buffer
+	TUTORIEL_VK_CHECK(vkEndCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight]));
 }
 
 void HelloTriangle::destroy() {

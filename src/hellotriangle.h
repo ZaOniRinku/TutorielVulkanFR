@@ -80,4 +80,8 @@ private:
 	std::vector<VkFence> m_fences;
 	std::vector<VkSemaphore> m_acquireCompletedSemaphores;
 	std::vector<VkSemaphore> m_renderCompletedSemaphores;
+
+	PFN_vkCmdBeginRenderingKHR m_vkCmdBeginRenderingKHR;
+	PFN_vkCmdEndRenderingKHR m_vkCmdEndRenderingKHR;
+	PFN_vkCmdPipelineBarrier2KHR m_vkCmdPipelineBarrier2KHR;
 };
