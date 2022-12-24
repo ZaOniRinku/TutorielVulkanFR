@@ -1,0 +1,8 @@
+remote_theme: jekyll/minima
+minima:
+  skin: dark
+plugins:
+    - jekyll-relative-links
+relative_links:
+    enabled: true
+    collections: true
