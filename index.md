@@ -18,3 +18,4 @@
 	- [1.6.4 - La rastérisation](partie1/6/4.md)
 	- [1.6.5 - Mélange de couleurs](partie1/6/5.md)
 	- [1.6.6 - Passe de rendu](partie1/6/6.md)
+	- [1.6.7 - Création de la pipeline graphique](partie1/6/7.md)
