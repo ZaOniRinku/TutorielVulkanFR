@@ -272,7 +272,7 @@ void HelloTriangle::init() {
 	VkFormat swapchainFormat = surfaceFormats[0].format;
 	VkColorSpaceKHR swapchainColorSpace = surfaceFormats[0].colorSpace;
 	for (const VkSurfaceFormatKHR& surfaceFormat : surfaceFormats) {
-		if (surfaceFormat.format == VK_FORMAT_R8G8B8A8_SRGB && surfaceFormat.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
+		if (surfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormat.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
 			swapchainFormat = surfaceFormat.format;
 			swapchainColorSpace = surfaceFormat.colorSpace;
 			break;
@@ -719,6 +719,38 @@ void HelloTriangle::update() {
 
 	// Fin de l'enregistrement du command buffer
 	TUTORIEL_VK_CHECK(vkEndCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight]));
+
+	// De-signalement de la fence
+	TUTORIEL_VK_CHECK(vkResetFences(m_device, 1, &m_fences[m_currentFrameInFlight]));
+
+	// Soumission des commandes a la queue du GPU
+	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = nullptr;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &m_acquireCompletedSemaphores[m_currentFrameInFlight];
+	submitInfo.pWaitDstStageMask = &waitDstStageMask;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &m_renderingCommandBuffers[m_currentFrameInFlight];
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &m_renderCompletedSemaphores[imageIndex];
+	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_fences[m_currentFrameInFlight]));
+
+	// Presentation de l'image de la swapchain a l'ecran
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext = nullptr;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &m_renderCompletedSemaphores[imageIndex];
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &m_swapchain;
+	presentInfo.pImageIndices = &imageIndex;
+	presentInfo.pResults = nullptr;
+	TUTORIEL_VK_CHECK(vkQueuePresentKHR(m_graphicsQueue, &presentInfo));
+
+	// Frame-in-flight suivante
+	m_currentFrameInFlight = (m_currentFrameInFlight + 1) % m_framesInFlight;
 }
 
 void HelloTriangle::destroy() {
