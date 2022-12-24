@@ -5,8 +5,11 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
 #include "../external/glfw/include/GLFW/glfw3native.h"
+#include "../external/glslang/glslang/Include/ShHandle.h"
+#include "../external/glslang/SPIRV/GlslangToSpv.h"
+#include "../external/glslang/StandAlone/DirStackFileIncluder.h"
 #include <array>
-#include <string>
+#include <fstream>
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 	std::cout << pCallbackData->pMessage << std::endl;
@@ -214,6 +217,23 @@ void HelloTriangle::init() {
 	// Recuperation de la queue creee
 	vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
 
+	// Viewport et scissor
+	int windowWidth;
+	int windowHeight;
+	glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+
+	m_viewport.x = 0.0f;
+	m_viewport.y = 0.0f;
+	m_viewport.width = static_cast<float>(windowWidth);
+	m_viewport.height = static_cast<float>(windowHeight);
+	m_viewport.minDepth = 0.0f;
+	m_viewport.maxDepth = 1.0f;
+
+	m_scissor.offset.x = 0;
+	m_scissor.offset.y = 0;
+	m_scissor.extent.width = static_cast<uint32_t>(windowWidth);
+	m_scissor.extent.height = static_cast<uint32_t>(windowHeight);
+
 	// Creation de la swapchain
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilities);
@@ -296,6 +316,125 @@ void HelloTriangle::init() {
 		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1;
 		TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
 	}
+
+	// Creation de la pipeline graphique
+	// Compilation des shaders
+	std::string vertexShader = readAsciiFile("../shaders/triangle.vert");
+	std::vector<uint32_t> vertexShaderSpv = compileShaderFile(vertexShader, ShaderType::Vertex);
+
+	std::string fragmentShader = readAsciiFile("../shaders/triangle.frag");
+	std::vector<uint32_t> fragmentShaderSpv = compileShaderFile(fragmentShader, ShaderType::Fragment);
+
+	VkShaderModule vertexShaderModule;
+	VkShaderModuleCreateInfo vertexShaderModuleCreateInfo = {};
+	vertexShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	vertexShaderModuleCreateInfo.pNext = nullptr;
+	vertexShaderModuleCreateInfo.flags = 0;
+	vertexShaderModuleCreateInfo.codeSize = vertexShaderSpv.size() * sizeof(uint32_t);
+	vertexShaderModuleCreateInfo.pCode = vertexShaderSpv.data();
+	TUTORIEL_VK_CHECK(vkCreateShaderModule(m_device, &vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule));
+
+	VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo = {};
+	vertexShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertexShaderStageCreateInfo.pNext = nullptr;
+	vertexShaderStageCreateInfo.flags = 0;
+	vertexShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertexShaderStageCreateInfo.module = vertexShaderModule;
+	vertexShaderStageCreateInfo.pName = "main";
+	vertexShaderStageCreateInfo.pSpecializationInfo = nullptr;
+
+	VkShaderModule fragmentShaderModule;
+	VkShaderModuleCreateInfo fragmentShaderModuleCreateInfo = {};
+	fragmentShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	fragmentShaderModuleCreateInfo.pNext = nullptr;
+	fragmentShaderModuleCreateInfo.flags = 0;
+	fragmentShaderModuleCreateInfo.codeSize = fragmentShaderSpv.size() * sizeof(uint32_t);
+	fragmentShaderModuleCreateInfo.pCode = fragmentShaderSpv.data();
+	TUTORIEL_VK_CHECK(vkCreateShaderModule(m_device, &fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule));
+
+	VkPipelineShaderStageCreateInfo fragmentShaderStageCreateInfo = {};
+	fragmentShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragmentShaderStageCreateInfo.pNext = nullptr;
+	fragmentShaderStageCreateInfo.flags = 0;
+	fragmentShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragmentShaderStageCreateInfo.module = fragmentShaderModule;
+	fragmentShaderStageCreateInfo.pName = "main";
+	fragmentShaderStageCreateInfo.pSpecializationInfo = nullptr;
+
+	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageCreateInfos = { vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo };
+
+	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
+	vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputStateCreateInfo.pNext = nullptr;
+	vertexInputStateCreateInfo.flags = 0;
+	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
+	vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {};
+	inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssemblyStateCreateInfo.pNext = nullptr;
+	inputAssemblyStateCreateInfo.flags = 0;
+	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
+
+	VkPipelineViewportStateCreateInfo viewportStateCreateInfo = {};
+	viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportStateCreateInfo.pNext = nullptr;
+	viewportStateCreateInfo.flags = 0;
+	viewportStateCreateInfo.viewportCount = 1;
+	viewportStateCreateInfo.pViewports = nullptr;
+	viewportStateCreateInfo.scissorCount = 1;
+	viewportStateCreateInfo.pScissors = nullptr;
+
+	std::array<VkDynamicState, 2> dynamicStates = { VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_VIEWPORT };
+	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {};
+	dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicStateCreateInfo.pNext = nullptr;
+	dynamicStateCreateInfo.flags = 0;
+	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+
+	VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {};
+	rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizationStateCreateInfo.pNext = nullptr;
+	rasterizationStateCreateInfo.flags = 0;
+	rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+	rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+	rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
+	rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
+	rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
+	rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;
+	rasterizationStateCreateInfo.lineWidth = 1.0f;
+
+	VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {};
+	multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampleStateCreateInfo.pNext = nullptr;
+	multisampleStateCreateInfo.flags = 0;
+	multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
+	multisampleStateCreateInfo.minSampleShading = 0.0f;
+	multisampleStateCreateInfo.pSampleMask = nullptr;
+	multisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE;
+	multisampleStateCreateInfo.alphaToOneEnable = VK_FALSE;
+
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = {};
+	depthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencilStateCreateInfo.pNext = nullptr;
+	depthStencilStateCreateInfo.flags = 0;
+	depthStencilStateCreateInfo.depthTestEnable = VK_FALSE;
+	depthStencilStateCreateInfo.depthWriteEnable = VK_FALSE;
+	depthStencilStateCreateInfo.depthCompareOp = VK_COMPARE_OP_NEVER;
+	depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
+	depthStencilStateCreateInfo.stencilTestEnable = VK_FALSE;
+	depthStencilStateCreateInfo.front = {};
+	depthStencilStateCreateInfo.back = {};
+	depthStencilStateCreateInfo.minDepthBounds = 0.0f;
+	depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
 }
 
 void HelloTriangle::update() {
@@ -384,4 +523,213 @@ bool HelloTriangle::deviceExtensionAvailable(const char* extensionName) {
 
 	std::cout << "Extension de device " << extensionName << " n'est pas disponible.";
 	return false;
+}
+
+std::string HelloTriangle::readBinaryFile(const std::string& filePath) {
+	std::ifstream file(filePath, std::ios::in | std::ios::binary);
+	if (!file.is_open()) {
+		std::cout << "Le fichier binaire \"" << filePath << "\" n'a pas pu etre ouvert." << std::endl;
+		exit(1);
+	}
+	std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	return fileContent;
+}
+
+std::string HelloTriangle::readAsciiFile(const std::string& filePath) {
+	std::ifstream file(filePath, std::ios::in);
+	if (!file.is_open()) {
+		std::cout << "Le fichier ASCII \"" << filePath << "\" n'a pas pu etre ouvert." << std::endl;
+		exit(1);
+	}
+	std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	return fileContent;
+}
+
+std::vector<uint32_t> HelloTriangle::compileShaderFile(const std::string& shaderCode, ShaderType shaderType) {
+	if (!m_glslangInitialized) {
+		glslang::InitializeProcess();
+		m_glslangInitialized = true;
+	}
+
+	std::vector<uint32_t> spvCode;
+
+	const char* shaderCodeCharPtr = shaderCode.c_str();
+
+	EShLanguage eshType;
+	switch (shaderType) {
+	case ShaderType::Vertex:
+		eshType = EShLangVertex;
+		break;
+
+	case ShaderType::TessellationControl:
+		eshType = EShLangTessControl;
+		break;
+
+	case ShaderType::TessellationEvaluation:
+		eshType = EShLangTessEvaluation;
+		break;
+
+	case ShaderType::Geometry:
+		eshType = EShLangGeometry;
+		break;
+
+	case ShaderType::Fragment:
+		eshType = EShLangFragment;
+		break;
+	}
+
+	glslang::TShader shader(eshType);
+	shader.setStrings(&shaderCodeCharPtr, 1);
+	int clientInputSemanticsVersion = 110;
+	glslang::EshTargetClientVersion vulkanClientVersion = glslang::EShTargetVulkan_1_1;
+	glslang::EShTargetLanguageVersion spvLanguageVersion = glslang::EShTargetSpv_1_2;
+	shader.setEnvInput(glslang::EShSourceGlsl, eshType, glslang::EShClientVulkan, clientInputSemanticsVersion);
+	shader.setEnvClient(glslang::EShClientVulkan, vulkanClientVersion);
+	shader.setEnvTarget(glslang::EshTargetSpv, spvLanguageVersion);
+	EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
+	int defaultVersion = 460;
+
+	// Preprocess
+	const TBuiltInResource defaultTBuiltInResource = {
+		/* .MaxLights = */ 32,
+		/* .MaxClipPlanes = */ 6,
+		/* .MaxTextureUnits = */ 32,
+		/* .MaxTextureCoords = */ 32,
+		/* .MaxVertexAttribs = */ 64,
+		/* .MaxVertexUniformComponents = */ 4096,
+		/* .MaxVaryingFloats = */ 64,
+		/* .MaxVertexTextureImageUnits = */ 32,
+		/* .MaxCombinedTextureImageUnits = */ 80,
+		/* .MaxTextureImageUnits = */ 32,
+		/* .MaxFragmentUniformComponents = */ 4096,
+		/* .MaxDrawBuffers = */ 32,
+		/* .MaxVertexUniformVectors = */ 128,
+		/* .MaxVaryingVectors = */ 8,
+		/* .MaxFragmentUniformVectors = */ 16,
+		/* .MaxVertexOutputVectors = */ 16,
+		/* .MaxFragmentInputVectors = */ 15,
+		/* .MinProgramTexelOffset = */ -8,
+		/* .MaxProgramTexelOffset = */ 7,
+		/* .MaxClipDistances = */ 8,
+		/* .MaxComputeWorkGroupCountX = */ 65535,
+		/* .MaxComputeWorkGroupCountY = */ 65535,
+		/* .MaxComputeWorkGroupCountZ = */ 65535,
+		/* .MaxComputeWorkGroupSizeX = */ 1024,
+		/* .MaxComputeWorkGroupSizeY = */ 1024,
+		/* .MaxComputeWorkGroupSizeZ = */ 64,
+		/* .MaxComputeUniformComponents = */ 1024,
+		/* .MaxComputeTextureImageUnits = */ 16,
+		/* .MaxComputeImageUniforms = */ 8,
+		/* .MaxComputeAtomicCounters = */ 8,
+		/* .MaxComputeAtomicCounterBuffers = */ 1,
+		/* .MaxVaryingComponents = */ 60,
+		/* .MaxVertexOutputComponents = */ 64,
+		/* .MaxGeometryInputComponents = */ 64,
+		/* .MaxGeometryOutputComponents = */ 128,
+		/* .MaxFragmentInputComponents = */ 128,
+		/* .MaxImageUnits = */ 8,
+		/* .MaxCombinedImageUnitsAndFragmentOutputs = */ 8,
+		/* .MaxCombinedShaderOutputResources = */ 8,
+		/* .MaxImageSamples = */ 0,
+		/* .MaxVertexImageUniforms = */ 0,
+		/* .MaxTessControlImageUniforms = */ 0,
+		/* .MaxTessEvaluationImageUniforms = */ 0,
+		/* .MaxGeometryImageUniforms = */ 0,
+		/* .MaxFragmentImageUniforms = */ 8,
+		/* .MaxCombinedImageUniforms = */ 8,
+		/* .MaxGeometryTextureImageUnits = */ 16,
+		/* .MaxGeometryOutputVertices = */ 256,
+		/* .MaxGeometryTotalOutputComponents = */ 1024,
+		/* .MaxGeometryUniformComponents = */ 1024,
+		/* .MaxGeometryVaryingComponents = */ 64,
+		/* .MaxTessControlInputComponents = */ 128,
+		/* .MaxTessControlOutputComponents = */ 128,
+		/* .MaxTessControlTextureImageUnits = */ 16,
+		/* .MaxTessControlUniformComponents = */ 1024,
+		/* .MaxTessControlTotalOutputComponents = */ 4096,
+		/* .MaxTessEvaluationInputComponents = */ 128,
+		/* .MaxTessEvaluationOutputComponents = */ 128,
+		/* .MaxTessEvaluationTextureImageUnits = */ 16,
+		/* .MaxTessEvaluationUniformComponents = */ 1024,
+		/* .MaxTessPatchComponents = */ 120,
+		/* .MaxPatchVertices = */ 32,
+		/* .MaxTessGenLevel = */ 64,
+		/* .MaxViewports = */ 16,
+		/* .MaxVertexAtomicCounters = */ 0,
+		/* .MaxTessControlAtomicCounters = */ 0,
+		/* .MaxTessEvaluationAtomicCounters = */ 0,
+		/* .MaxGeometryAtomicCounters = */ 0,
+		/* .MaxFragmentAtomicCounters = */ 8,
+		/* .MaxCombinedAtomicCounters = */ 8,
+		/* .MaxAtomicCounterBindings = */ 1,
+		/* .MaxVertexAtomicCounterBuffers = */ 0,
+		/* .MaxTessControlAtomicCounterBuffers = */ 0,
+		/* .MaxTessEvaluationAtomicCounterBuffers = */ 0,
+		/* .MaxGeometryAtomicCounterBuffers = */ 0,
+		/* .MaxFragmentAtomicCounterBuffers = */ 1,
+		/* .MaxCombinedAtomicCounterBuffers = */ 1,
+		/* .MaxAtomicCounterBufferSize = */ 16384,
+		/* .MaxTransformFeedbackBuffers = */ 4,
+		/* .MaxTransformFeedbackInterleavedComponents = */ 64,
+		/* .MaxCullDistances = */ 8,
+		/* .MaxCombinedClipAndCullDistances = */ 8,
+		/* .MaxSamples = */ 4,
+		/* .maxMeshOutputVerticesNV = */ 256,
+		/* .maxMeshOutputPrimitivesNV = */ 512,
+		/* .maxMeshWorkGroupSizeX_NV = */ 32,
+		/* .maxMeshWorkGroupSizeY_NV = */ 1,
+		/* .maxMeshWorkGroupSizeZ_NV = */ 1,
+		/* .maxTaskWorkGroupSizeX_NV = */ 32,
+		/* .maxTaskWorkGroupSizeY_NV = */ 1,
+		/* .maxTaskWorkGroupSizeZ_NV = */ 1,
+		/* .maxMeshViewCountNV = */ 4,
+		/* .maxMeshOutputVerticesEXT = */ 256,
+		/* .maxMeshOutputPrimitivesEXT = */ 256,
+		/* .maxMeshWorkGroupSizeX_EXT = */ 128,
+		/* .maxMeshWorkGroupSizeY_EXT = */ 128,
+		/* .maxMeshWorkGroupSizeZ_EXT = */ 128,
+		/* .maxTaskWorkGroupSizeX_EXT = */ 128,
+		/* .maxTaskWorkGroupSizeY_EXT = */ 128,
+		/* .maxTaskWorkGroupSizeZ_EXT = */ 128,
+		/* .maxMeshViewCountEXT = */ 4,
+		/* .maxDualSourceDrawBuffersEXT = */ 1,
+
+		/* .limits = */ {
+			/* .nonInductiveForLoops = */ 1,
+			/* .whileLoops = */ 1,
+			/* .doWhileLoops = */ 1,
+			/* .generalUniformIndexing = */ 1,
+			/* .generalAttributeMatrixVectorIndexing = */ 1,
+			/* .generalVaryingIndexing = */ 1,
+			/* .generalSamplerIndexing = */ 1,
+			/* .generalVariableIndexing = */ 1,
+			/* .generalConstantMatrixVectorIndexing = */ 1,
+		} };
+	DirStackFileIncluder includer;
+	includer.pushExternalLocalDirectory("../shaders/");
+	std::string preprocess;
+	if (!shader.preprocess(&defaultTBuiltInResource, defaultVersion, ENoProfile, false, false, messages, &preprocess, includer)) {
+		std::cout << "Le preprocessing du shader a echoue.\n" << std::string(shader.getInfoLog()) << std::endl;
+	}
+
+	// Parse
+	const char* preprocessCharPtr = preprocess.c_str();
+	shader.setStrings(&preprocessCharPtr, 1);
+	if (!shader.parse(&defaultTBuiltInResource, defaultVersion, false, messages)) {
+		std::cout << "Le parsing du shader a echoue.\n" << std::string(shader.getInfoLog()) << std::endl;
+	}
+
+	// Link
+	glslang::TProgram program;
+	program.addShader(&shader);
+	if (!program.link(messages)) {
+		std::cout << "Le linking du shader a echoue.\n" << std::string(shader.getInfoLog()) << std::endl;
+	}
+
+	// Compile
+	spv::SpvBuildLogger buildLogger;
+	glslang::SpvOptions spvOptions;
+	glslang::GlslangToSpv(*program.getIntermediate(eshType), spvCode, &buildLogger, &spvOptions);
+
+	return spvCode;
 }

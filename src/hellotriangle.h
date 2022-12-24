@@ -8,6 +8,7 @@
 #include <vulkan/vulkan.h>
 #include <iostream>
 #include <vector>
+#include <string>
 
 #define TUTORIEL_VK_CHECK(f) \
 	do { \
@@ -17,6 +18,14 @@
 			exit(1); \
 		} \
 	} while(0)
+
+enum struct ShaderType {
+	Vertex,
+	TessellationControl,
+	TessellationEvaluation,
+	Geometry,
+	Fragment
+};
 
 class HelloTriangle {
 public:
@@ -30,6 +39,9 @@ private:
 	bool explicitLayerAvailable(const char* layerName);
 	bool instanceExtensionAvailable(const char* extensionName);
 	bool deviceExtensionAvailable(const char* extensionName);
+	std::string readBinaryFile(const std::string& filePath);
+	std::string readAsciiFile(const std::string& filePath);
+	std::vector<uint32_t> compileShaderFile(const std::string& shaderCode, ShaderType shaderType);
 
 private:
 	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
@@ -53,4 +65,9 @@ private:
 
 	VkPipeline m_graphicsPipeline;
 	VkPipelineLayout m_graphicsPipelineLayout;
+
+	VkViewport m_viewport;
+	VkRect2D m_scissor;
+
+	bool m_glslangInitialized = false;
 };
