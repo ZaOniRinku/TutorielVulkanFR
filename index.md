@@ -15,3 +15,6 @@
 	- [1.6.1 - Écriture et compilation des shaders](partie1/6/1.md)
 	- [1.6.2 - Vertices en entrée](partie1/6/2.md)
 	- [1.6.3 - Viewport et scissor](partie1/6/3.md)
+	- [1.6.4 - La rastérisation](partie1/6/4.md)
+	- [1.6.5 - Mélange de couleurs](partie1/6/5.md)
+	- [1.6.6 - Passe de rendu](partie1/6/6.md)
