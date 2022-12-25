@@ -243,7 +243,7 @@ void HelloTriangle::init() {
 	// Creation de la swapchain
 	createSwapchain(VK_NULL_HANDLE);
 
-	// Creation de la pipeline graphique
+	// Creation du pipeline graphique
 	// Compilation des shaders
 	std::string vertexShader = readAsciiFile("../shaders/triangle.vert");
 	std::vector<uint32_t> vertexShaderSpv = compileShaderFile(vertexShader, ShaderType::Vertex);
@@ -308,7 +308,7 @@ void HelloTriangle::init() {
 	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 
-	// Viewport et scissor de la pipeline graphique
+	// Viewport et scissor du pipeline graphique
 	VkPipelineViewportStateCreateInfo viewportStateCreateInfo = {};
 	viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportStateCreateInfo.pNext = nullptr;
@@ -403,7 +403,7 @@ void HelloTriangle::init() {
 	pipelineRenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
 	pipelineRenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
-	// Creation du layout de la pipeline graphique
+	// Creation du layout du pipeline graphique
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCreateInfo.pNext = nullptr;
@@ -414,7 +414,7 @@ void HelloTriangle::init() {
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 	TUTORIEL_VK_CHECK(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_graphicsPipelineLayout));
 
-	// Creation de la pipeline graphique
+	// Creation du pipeline graphique
 	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {};
 	graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	graphicsPipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;
@@ -579,7 +579,7 @@ void HelloTriangle::update() {
 	renderingInfo.pStencilAttachment = nullptr;
 	m_vkCmdBeginRenderingKHR(m_renderingCommandBuffers[m_currentFrameInFlight], &renderingInfo);
 
-	// Lien de la pipeline graphique
+	// Lien du pipeline graphique
 	vkCmdBindPipeline(m_renderingCommandBuffers[m_currentFrameInFlight], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
 	vkCmdSetViewport(m_renderingCommandBuffers[m_currentFrameInFlight], 0, 1, &m_viewport);
 	vkCmdSetScissor(m_renderingCommandBuffers[m_currentFrameInFlight], 0, 1, &m_scissor);
@@ -684,10 +684,10 @@ void HelloTriangle::destroy() {
 		vkDestroyCommandPool(m_device, m_renderingCommandPools[i], nullptr);
 	}
 
-	// Destruction de la pipeline graphique
+	// Destruction du pipeline graphique
 	vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
 
-	// Destruction du layout de la pipeline graphique
+	// Destruction du layout du pipeline graphique
 	vkDestroyPipelineLayout(m_device, m_graphicsPipelineLayout, nullptr);
 
 	// Destruction des vues des images de la swapchain
