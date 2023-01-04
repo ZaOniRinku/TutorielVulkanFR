@@ -39,6 +39,7 @@ private:
 	bool explicitLayerAvailable(const char* layerName);
 	bool instanceExtensionAvailable(const char* extensionName);
 	bool deviceExtensionAvailable(const char* extensionName);
+	void createGraphicsPipeline();
 	std::string readBinaryFile(const std::string& filePath);
 	std::string readAsciiFile(const std::string& filePath);
 	std::vector<uint32_t> compileShaderFile(const std::string& shaderCode, ShaderType shaderType);
