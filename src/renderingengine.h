@@ -1,11 +1,12 @@
 #pragma once
 #include "../external/glfw/include/GLFW/glfw3.h"
+#include "../external/nml/include/nml.h"
 #if defined(TUTORIEL_VK_OS_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(TUTORIEL_VK_OS_LINUX)
 #define VK_USE_PLATFORM_XLIB_KHR
 #endif
-#include <vulkan/vulkan.h>
+#include "../external/VulkanMemoryAllocator/include/vk_mem_alloc.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -27,6 +28,12 @@ enum struct ShaderType {
 	Fragment
 };
 
+struct Vertex {
+	nml::vec3 position;
+	nml::vec3 normal;
+	nml::vec2 uv;
+};
+
 class RenderingEngine {
 public:
 	void init();
@@ -39,6 +46,7 @@ private:
 	bool explicitLayerAvailable(const char* layerName);
 	bool instanceExtensionAvailable(const char* extensionName);
 	bool deviceExtensionAvailable(const char* extensionName);
+	void createGraphicsPipeline();
 	std::string readBinaryFile(const std::string& filePath);
 	std::string readAsciiFile(const std::string& filePath);
 	std::vector<uint32_t> compileShaderFile(const std::string& shaderCode, ShaderType shaderType);
@@ -82,6 +90,13 @@ private:
 	std::vector<VkFence> m_fences;
 	std::vector<VkSemaphore> m_acquireCompletedSemaphores;
 	std::vector<VkSemaphore> m_renderCompletedSemaphores;
+
+	VmaAllocator m_allocator;
+
+	VkBuffer m_vertexBuffer;
+	VmaAllocation m_vertexBufferAllocation;
+	VkBuffer m_indexBuffer;
+	VmaAllocation m_indexBufferAllocation;
 
 	PFN_vkCmdBeginRenderingKHR m_vkCmdBeginRenderingKHR;
 	PFN_vkCmdEndRenderingKHR m_vkCmdEndRenderingKHR;
