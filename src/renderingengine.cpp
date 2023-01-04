@@ -316,7 +316,7 @@ void RenderingEngine::init() {
 	vertexAndIndexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexAndIndexBufferCreateInfo.pNext = nullptr;
 	vertexAndIndexBufferCreateInfo.flags = 0;
-	vertexAndIndexBufferCreateInfo.size = 65536;
+	vertexAndIndexBufferCreateInfo.size = 67108864;
 	vertexAndIndexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	vertexAndIndexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	vertexAndIndexBufferCreateInfo.queueFamilyIndexCount = 1;
@@ -1145,4 +1145,166 @@ void RenderingEngine::createSwapchain(VkSwapchainKHR oldSwapchain) {
 		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1;
 		TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
 	}
+}
+
+void RenderingEngine::createCube() {
+	std::array<Vertex, 24> vertices = { {
+		{ {1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 0
+		{ {-1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 1
+		{ {-1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 2
+		{ {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 3
+		{ {1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} }, // Vertex 4
+		{ {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} }, // Vertex 5
+		{ {-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} }, // Vertex 6
+		{ {-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f} }, // Vertex 7
+		{ {-1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 8
+		{ {-1.0f, 1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 9
+		{ {-1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 10
+		{ {-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 11
+		{ {-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 12
+		{ {1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 13
+		{ {1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 14
+		{ {-1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 15
+		{ {1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 16
+		{ {1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 17
+		{ {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 18
+		{ {1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 19
+		{ {-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f} }, // Vertex 20
+		{ {-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f} }, // Vertex 21
+		{ {1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f} }, // Vertex 22
+		{ {1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f} } // Vertex 23
+	} };
+
+	std::array<uint32_t, 36> indices = {
+		0,
+		1,
+		2,
+		0,
+		2,
+		3,
+		4,
+		5,
+		6,
+		4,
+		6,
+		7,
+		8,
+		9,
+		10,
+		8,
+		10,
+		11,
+		12,
+		13,
+		14,
+		12,
+		14,
+		15,
+		16,
+		17,
+		18,
+		16,
+		18,
+		19,
+		20,
+		21,
+		22,
+		20,
+		22,
+		23
+	};
+
+	// Creation du staging buffer
+	VkBuffer vertexAndIndexStagingBuffer;
+	VmaAllocation vertexAndIndexStagingBufferAllocation;
+
+	VkBufferCreateInfo vertexAndIndexStagingBufferCreateInfo = {};
+	vertexAndIndexStagingBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	vertexAndIndexStagingBufferCreateInfo.pNext = nullptr;
+	vertexAndIndexStagingBufferCreateInfo.flags = 0;
+	vertexAndIndexStagingBufferCreateInfo.size = 134217728;
+	vertexAndIndexStagingBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	vertexAndIndexStagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	vertexAndIndexStagingBufferCreateInfo.queueFamilyIndexCount = 1;
+	vertexAndIndexStagingBufferCreateInfo.pQueueFamilyIndices = &m_graphicsQueueFamilyIndex;
+
+	VmaAllocationCreateInfo vertexAndIndexStagingBufferAllocationCreateInfo = {};
+	vertexAndIndexStagingBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+	vertexAndIndexStagingBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+	TUTORIEL_VK_CHECK(vmaCreateBuffer(m_allocator, &vertexAndIndexStagingBufferCreateInfo, &vertexAndIndexStagingBufferAllocationCreateInfo, &vertexAndIndexStagingBuffer, &vertexAndIndexStagingBufferAllocation, nullptr));
+
+	// Copie des donnees CPU vers le Staging Buffer
+	void* data;
+
+	TUTORIEL_VK_CHECK(vmaMapMemory(m_allocator, vertexAndIndexStagingBufferAllocation, &data));
+	memcpy(data, vertices.data(), vertices.size() * sizeof(Vertex));
+	memcpy(reinterpret_cast<char*>(data) + 67108864, indices.data(), indices.size() * sizeof(uint32_t));
+	vmaUnmapMemory(m_allocator, vertexAndIndexStagingBufferAllocation);
+
+	// Copie le Staging Buffer vers le Vertex Buffer et l'Index Buffer
+	VkCommandPool buffersCopyCommandPool;
+
+	VkCommandPoolCreateInfo buffersCopyCommandPoolCreateInfo = {};
+	buffersCopyCommandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	buffersCopyCommandPoolCreateInfo.pNext = nullptr;
+	buffersCopyCommandPoolCreateInfo.flags = 0;
+	buffersCopyCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &buffersCopyCommandPoolCreateInfo, nullptr, &buffersCopyCommandPool));
+
+	VkCommandBuffer buffersCopyCommandBuffer;
+
+	VkCommandBufferAllocateInfo buffersCopyCommandBufferAllocateInfo = {};
+	buffersCopyCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	buffersCopyCommandBufferAllocateInfo.pNext = nullptr;
+	buffersCopyCommandBufferAllocateInfo.commandPool = buffersCopyCommandPool;
+	buffersCopyCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	buffersCopyCommandBufferAllocateInfo.commandBufferCount = 1;
+	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &buffersCopyCommandBufferAllocateInfo, &buffersCopyCommandBuffer));
+
+	VkCommandBufferBeginInfo vertexAndIndexBuffersCopyBeginInfo = {};
+	vertexAndIndexBuffersCopyBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	vertexAndIndexBuffersCopyBeginInfo.pNext = nullptr;
+	vertexAndIndexBuffersCopyBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vertexAndIndexBuffersCopyBeginInfo.pInheritanceInfo = nullptr;
+	vkBeginCommandBuffer(buffersCopyCommandBuffer, &vertexAndIndexBuffersCopyBeginInfo);
+
+	VkBufferCopy vertexBufferCopy = {};
+	vertexBufferCopy.srcOffset = 0;
+	vertexBufferCopy.dstOffset = 0;
+	vertexBufferCopy.size = vertices.size() * sizeof(Vertex);
+	vkCmdCopyBuffer(buffersCopyCommandBuffer, vertexAndIndexStagingBuffer, m_vertexBuffer, 1, &vertexBufferCopy);
+
+	VkBufferCopy indexBufferCopy = {};
+	indexBufferCopy.srcOffset = 67108864;
+	indexBufferCopy.dstOffset = 0;
+	indexBufferCopy.size = indices.size() * sizeof(uint32_t);
+	vkCmdCopyBuffer(buffersCopyCommandBuffer, vertexAndIndexStagingBuffer, m_indexBuffer, 1, &indexBufferCopy);
+
+	vkEndCommandBuffer(buffersCopyCommandBuffer);
+
+	VkFence buffersCopyFence;
+
+	VkFenceCreateInfo buffersCopyFenceCreateInfo = {};
+	buffersCopyFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	buffersCopyFenceCreateInfo.pNext = nullptr;
+	buffersCopyFenceCreateInfo.flags = 0;
+	TUTORIEL_VK_CHECK(vkCreateFence(m_device, &buffersCopyFenceCreateInfo, nullptr, &buffersCopyFence));
+
+	VkSubmitInfo buffersCopySubmitInfo = {};
+	buffersCopySubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	buffersCopySubmitInfo.pNext = nullptr;
+	buffersCopySubmitInfo.waitSemaphoreCount = 0;
+	buffersCopySubmitInfo.pWaitSemaphores = nullptr;
+	buffersCopySubmitInfo.pWaitDstStageMask = nullptr;
+	buffersCopySubmitInfo.commandBufferCount = 1;
+	buffersCopySubmitInfo.pCommandBuffers = &buffersCopyCommandBuffer;
+	buffersCopySubmitInfo.signalSemaphoreCount = 0;
+	buffersCopySubmitInfo.pSignalSemaphores = nullptr;
+	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &buffersCopySubmitInfo, buffersCopyFence));
+	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &buffersCopyFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
+
+	// Destruction des ressources utilisees pour la copie des buffers
+	vkDestroyFence(m_device, buffersCopyFence, nullptr);
+	vkDestroyCommandPool(m_device, buffersCopyCommandPool, nullptr);
+	vmaDestroyBuffer(m_allocator, vertexAndIndexStagingBuffer, vertexAndIndexStagingBufferAllocation);
 }

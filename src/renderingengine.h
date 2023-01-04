@@ -52,6 +52,8 @@ private:
 	std::vector<uint32_t> compileShaderFile(const std::string& shaderCode, ShaderType shaderType);
 	void createSwapchain(VkSwapchainKHR oldSwapchain);
 
+	void createCube();
+
 private:
 	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
 	VkDebugUtilsMessengerEXT m_debugMessenger;
