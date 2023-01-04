@@ -25,9 +25,9 @@ else() # Si CMake a réussi à trouver Vulkan
 endif()
 
 set(SOURCES
-	src/hellotriangle.cpp)
+	src/renderingengine.cpp)
 set(HEADERS
-	src/hellotriangle.h)
+	src/renderingengine.h)
 
 add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES} ${HEADERS}) # On va vouloir créer un exécutable du même nom que le projet et avec les fichiers du dossier src
 

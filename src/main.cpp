@@ -1,14 +1,14 @@
-#include "hellotriangle.h"
+#include "renderingengine.h"
 
 int main() {
-	HelloTriangle helloTriangle;
-	helloTriangle.init();
+	RenderingEngine renderingEngine;
+	renderingEngine.init();
 
-	while (!helloTriangle.shouldClose()) {
-		helloTriangle.update();
+	while (!renderingEngine.shouldClose()) {
+		renderingEngine.update();
 	}
 
-	helloTriangle.destroy();
+	renderingEngine.destroy();
 
 	return 0;
 }
