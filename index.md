@@ -24,3 +24,7 @@
 - [1.8 - Objets de synchronisation](partie1/8.md)
 - [1.9 - La boucle de rendu](partie1/9.md)
 - [1.10 - Redimensionnement de la fenêtre et recréation de la swapchain](partie1/10.md)
+
+### Partie 2 : Dessiner des modèles 3D
+- [2.1 - Structure du programme](partie2/1.md)
+- [2.2 - Vertex et index buffers](partie2/2.md)
