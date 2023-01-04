@@ -15,6 +15,7 @@ endif()
 
 add_subdirectory(external/glfw) # On appelle le fichier CMake de GLFW
 add_subdirectory(external/glslang) # On appelle le fichier CMake de Glslang
+add_subdirectory(external/nml) # On appelle le fichier CMake de nml
 add_subdirectory(external/VulkanMemoryAllocator) # On appelle le fichier CMake de VulkanMemoryAllocator
 
 find_package(Vulkan) # On demande à CMake de chercher Vulkan
@@ -31,7 +32,7 @@ set(HEADERS
 
 add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES} ${HEADERS}) # On va vouloir créer un exécutable du même nom que le projet et avec les fichiers du dossier src
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw glslang SPIRV VulkanMemoryAllocator Vulkan::Vulkan) # On lie GLFW, glslang, SPIRV (inclut dans Glslang), VulkanMemoryAllocator et Vulkan à notre projet
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw glslang SPIRV nml VulkanMemoryAllocator Vulkan::Vulkan) # On lie GLFW, glslang, SPIRV (inclut dans Glslang), nml, VulkanMemoryAllocator et Vulkan à notre projet
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	${TUTORIEL_VK_DEFINES}) # On ajoute toutes les définitions qu'on a créées plus haut

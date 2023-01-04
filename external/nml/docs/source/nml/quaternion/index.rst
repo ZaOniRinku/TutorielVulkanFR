@@ -1,0 +1,6 @@
+Quaternion
+==========
+
+.. toctree::
+
+	./quat.rst
