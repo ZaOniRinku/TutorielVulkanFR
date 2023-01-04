@@ -240,7 +240,7 @@ void RenderingEngine::init() {
 	// Recuperation de la queue creee
 	vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
 
-	// Initialisation de VulkanMemoryAllocator
+	// Initialisation de l'allocateur de memoire
 	VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
 	vmaAllocatorCreateInfo.flags = 0;
 	vmaAllocatorCreateInfo.physicalDevice = m_physicalDevice;
@@ -310,6 +310,25 @@ void RenderingEngine::init() {
 	m_vkCmdPipelineBarrier2KHR = (PFN_vkCmdPipelineBarrier2KHR)vkGetDeviceProcAddr(m_device, "vkCmdPipelineBarrier2KHR");
 	m_vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(m_device, "vkCmdBeginRenderingKHR");
 	m_vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(m_device, "vkCmdEndRenderingKHR");
+
+	// Creation des vertex et index buffers
+	VkBufferCreateInfo vertexAndIndexBufferCreateInfo = {};
+	vertexAndIndexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	vertexAndIndexBufferCreateInfo.pNext = nullptr;
+	vertexAndIndexBufferCreateInfo.flags = 0;
+	vertexAndIndexBufferCreateInfo.size = 65536;
+	vertexAndIndexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	vertexAndIndexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	vertexAndIndexBufferCreateInfo.queueFamilyIndexCount = 1;
+	vertexAndIndexBufferCreateInfo.pQueueFamilyIndices = &m_graphicsQueueFamilyIndex;
+
+	VmaAllocationCreateInfo vertexAndIndexBufferAllocationCreateInfo = {};
+	vertexAndIndexBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+	vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_vertexBuffer, &m_vertexBufferAllocation, nullptr);
+
+	vertexAndIndexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_indexBuffer, &m_indexBufferAllocation, nullptr);
 }
 
 void RenderingEngine::update() {
@@ -485,8 +504,12 @@ void RenderingEngine::update() {
 }
 
 void RenderingEngine::destroy() {
-	// Attente que la queue du GPU ne soit plus utilis�e
+	// Attente que la queue du GPU ne soit plus utilisee
 	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+
+	// Destruction des vertex et index buffers
+	vmaDestroyBuffer(m_allocator, m_indexBuffer, m_indexBufferAllocation);
+	vmaDestroyBuffer(m_allocator, m_vertexBuffer, m_vertexBufferAllocation);
 
 	// Destruction des objets de synchronisation
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
