@@ -74,6 +74,9 @@ private:
 
 	void createCube();
 
+	uint32_t findMipLevels(uint32_t width, uint32_t height);
+	void createTexture();
+
 	void createScene();
 
 private:
@@ -135,6 +138,11 @@ private:
 
 	std::vector<VkBuffer> m_objectsBuffers;
 	std::vector<VmaAllocation> m_objectsBufferAllocations;
+
+	std::vector<VkImage> m_textureImages;
+	std::vector<VkImageView> m_textureImageViews;
+	std::vector<VmaAllocation> m_textureImageAllocations;
+	VkSampler m_textureSampler;
 
 	std::vector<Mesh> m_meshes;
 

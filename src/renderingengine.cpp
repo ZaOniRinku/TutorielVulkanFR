@@ -1713,6 +1713,255 @@ void RenderingEngine::createCube() {
 	m_meshes.push_back(cube);
 }
 
+uint32_t RenderingEngine::findMipLevels(uint32_t width, uint32_t height) {
+	return static_cast<uint32_t>(std::floor(std::log2(std::min(width, height)) + 1));
+}
+
+void RenderingEngine::createTexture() {
+	std::array<unsigned char, 16 * 16 * 4> textureData;
+	for (size_t i = 0; i < 256; i++) {
+		textureData[i * 4] = static_cast<unsigned char>(255 - i); // Rouge
+		textureData[i * 4 + 1] = static_cast<unsigned char>(i % 128); // Vert
+		textureData[i * 4 + 2] = static_cast<unsigned char>(i); // Bleu
+		textureData[i * 4 + 3] = static_cast<unsigned char>(255); // Alpha
+	}
+
+	VkImage textureImage;
+	VmaAllocation textureImageAllocation;
+
+	VkImageCreateInfo textureImageCreateInfo = {};
+	textureImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	textureImageCreateInfo.pNext = nullptr;
+	textureImageCreateInfo.flags = 0;
+	textureImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	textureImageCreateInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	textureImageCreateInfo.extent.width = 16;
+	textureImageCreateInfo.extent.height = 16;
+	textureImageCreateInfo.extent.depth = 1;
+	textureImageCreateInfo.mipLevels = findMipLevels(textureImageCreateInfo.extent.width, textureImageCreateInfo.extent.height);
+	textureImageCreateInfo.arrayLayers = 1;
+	textureImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	textureImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	textureImageCreateInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	textureImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	textureImageCreateInfo.queueFamilyIndexCount = 1;
+	textureImageCreateInfo.pQueueFamilyIndices = &m_graphicsQueueFamilyIndex;
+	textureImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	VmaAllocationCreateInfo textureImageAllocationCreateInfo = {};
+	textureImageAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+	TUTORIEL_VK_CHECK(vmaCreateImage(m_allocator, &textureImageCreateInfo, &textureImageAllocationCreateInfo, &textureImage, &textureImageAllocation, nullptr));
+
+	VkImageView textureImageView;
+
+	VkImageViewCreateInfo textureImageViewCreateInfo = {};
+	textureImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	textureImageViewCreateInfo.pNext = nullptr;
+	textureImageViewCreateInfo.flags = 0;
+	textureImageViewCreateInfo.image = textureImage;
+	textureImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	textureImageViewCreateInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	textureImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+	textureImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+	textureImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+	textureImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+	textureImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	textureImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	textureImageViewCreateInfo.subresourceRange.levelCount = textureImageCreateInfo.mipLevels;
+	textureImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	textureImageViewCreateInfo.subresourceRange.layerCount = 1;
+	TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &textureImageViewCreateInfo, nullptr, &textureImageView));
+
+	// Staging buffer
+	VkBuffer textureStagingBuffer;
+	VmaAllocation textureStagingBufferAllocation;
+
+	VkBufferCreateInfo textureStagingBufferCreateInfo = {};
+	textureStagingBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	textureStagingBufferCreateInfo.pNext = nullptr;
+	textureStagingBufferCreateInfo.flags = 0;
+	textureStagingBufferCreateInfo.size = 16 * 16 * 4;
+	textureStagingBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	textureStagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	textureStagingBufferCreateInfo.queueFamilyIndexCount = 1;
+	textureStagingBufferCreateInfo.pQueueFamilyIndices = &m_graphicsQueueFamilyIndex;
+
+	VmaAllocationCreateInfo textureStagingBufferAllocationCreateInfo = {};
+	textureStagingBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+	textureStagingBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+	TUTORIEL_VK_CHECK(vmaCreateBuffer(m_allocator, &textureStagingBufferCreateInfo, &textureStagingBufferAllocationCreateInfo, &textureStagingBuffer, &textureStagingBufferAllocation, nullptr));
+
+	void* data;
+	TUTORIEL_VK_CHECK(vmaMapMemory(m_allocator, textureStagingBufferAllocation, &data));
+	memcpy(data, textureData.data(), 16 * 16 * 4);
+	vmaUnmapMemory(m_allocator, textureStagingBufferAllocation);
+
+	// Copie du staging buffer et generation des mipmaps
+	VkCommandPool buffersCopyCommandPool;
+
+	VkCommandPoolCreateInfo buffersCopyCommandPoolCreateInfo = {};
+	buffersCopyCommandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	buffersCopyCommandPoolCreateInfo.pNext = nullptr;
+	buffersCopyCommandPoolCreateInfo.flags = 0;
+	buffersCopyCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &buffersCopyCommandPoolCreateInfo, nullptr, &buffersCopyCommandPool));
+
+	VkCommandBuffer buffersCopyCommandBuffer;
+
+	VkCommandBufferAllocateInfo buffersCopyCommandBufferAllocateInfo = {};
+	buffersCopyCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	buffersCopyCommandBufferAllocateInfo.pNext = nullptr;
+	buffersCopyCommandBufferAllocateInfo.commandPool = buffersCopyCommandPool;
+	buffersCopyCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	buffersCopyCommandBufferAllocateInfo.commandBufferCount = 1;
+	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &buffersCopyCommandBufferAllocateInfo, &buffersCopyCommandBuffer));
+
+	VkImageMemoryBarrier2 undefinedToTransferDstOptimalImageMemoryBarrier = {};
+	undefinedToTransferDstOptimalImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	undefinedToTransferDstOptimalImageMemoryBarrier.pNext = nullptr;
+	undefinedToTransferDstOptimalImageMemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+	undefinedToTransferDstOptimalImageMemoryBarrier.srcAccessMask = 0;
+	undefinedToTransferDstOptimalImageMemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+	undefinedToTransferDstOptimalImageMemoryBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	undefinedToTransferDstOptimalImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	undefinedToTransferDstOptimalImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	undefinedToTransferDstOptimalImageMemoryBarrier.srcQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	undefinedToTransferDstOptimalImageMemoryBarrier.dstQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	undefinedToTransferDstOptimalImageMemoryBarrier.image = textureImage;
+	undefinedToTransferDstOptimalImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	undefinedToTransferDstOptimalImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	undefinedToTransferDstOptimalImageMemoryBarrier.subresourceRange.levelCount = textureImageCreateInfo.mipLevels;
+	undefinedToTransferDstOptimalImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	undefinedToTransferDstOptimalImageMemoryBarrier.subresourceRange.layerCount = 1;
+
+	VkDependencyInfo undefinedToTransferDstOptimalDependencyInfo = {};
+	undefinedToTransferDstOptimalDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	undefinedToTransferDstOptimalDependencyInfo.pNext = nullptr;
+	undefinedToTransferDstOptimalDependencyInfo.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	undefinedToTransferDstOptimalDependencyInfo.memoryBarrierCount = 0;
+	undefinedToTransferDstOptimalDependencyInfo.pMemoryBarriers = nullptr;
+	undefinedToTransferDstOptimalDependencyInfo.bufferMemoryBarrierCount = 0;
+	undefinedToTransferDstOptimalDependencyInfo.pBufferMemoryBarriers = nullptr;
+	undefinedToTransferDstOptimalDependencyInfo.imageMemoryBarrierCount = 1;
+	undefinedToTransferDstOptimalDependencyInfo.pImageMemoryBarriers = &undefinedToTransferDstOptimalImageMemoryBarrier;
+	m_vkCmdPipelineBarrier2KHR(buffersCopyCommandBuffer, &undefinedToTransferDstOptimalDependencyInfo);
+
+	VkBufferImageCopy textureBufferCopy = {};
+	textureBufferCopy.bufferOffset = 0;
+	textureBufferCopy.bufferRowLength = 0;
+	textureBufferCopy.bufferImageHeight = 0;
+	textureBufferCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	textureBufferCopy.imageSubresource.mipLevel = 0;
+	textureBufferCopy.imageSubresource.baseArrayLayer = 0;
+	textureBufferCopy.imageSubresource.layerCount = 1;
+	textureBufferCopy.imageOffset.x = 0;
+	textureBufferCopy.imageOffset.y = 0;
+	textureBufferCopy.imageOffset.z = 0;
+	textureBufferCopy.imageExtent.width = 16;
+	textureBufferCopy.imageExtent.height = 16;
+	textureBufferCopy.imageExtent.depth = 1;
+	vkCmdCopyBufferToImage(buffersCopyCommandBuffer, textureStagingBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &textureBufferCopy);
+
+	VkImageMemoryBarrier2 mipMapGenerationImageMemoryBarrier = {};
+	mipMapGenerationImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	mipMapGenerationImageMemoryBarrier.pNext = nullptr;
+	mipMapGenerationImageMemoryBarrier.srcQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	mipMapGenerationImageMemoryBarrier.dstQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	mipMapGenerationImageMemoryBarrier.image = textureImage;
+	mipMapGenerationImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	mipMapGenerationImageMemoryBarrier.subresourceRange.levelCount = 1;
+	mipMapGenerationImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	mipMapGenerationImageMemoryBarrier.subresourceRange.layerCount = 1;
+
+	uint32_t mipWidth = textureImageCreateInfo.extent.width;
+	uint32_t mipHeight = textureImageCreateInfo.extent.height;
+	for (size_t i = 1; i < textureImageCreateInfo.mipLevels; i++) {
+		mipMapGenerationImageMemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		mipMapGenerationImageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		mipMapGenerationImageMemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		mipMapGenerationImageMemoryBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+		mipMapGenerationImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		mipMapGenerationImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		mipMapGenerationImageMemoryBarrier.subresourceRange.baseMipLevel = static_cast<uint32_t>(i) - 1;
+
+		VkDependencyInfo mipMapGenerationDependencyInfo = {};
+		mipMapGenerationDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		mipMapGenerationDependencyInfo.pNext = nullptr;
+		mipMapGenerationDependencyInfo.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+		mipMapGenerationDependencyInfo.memoryBarrierCount = 0;
+		mipMapGenerationDependencyInfo.pMemoryBarriers = nullptr;
+		mipMapGenerationDependencyInfo.bufferMemoryBarrierCount = 0;
+		mipMapGenerationDependencyInfo.pBufferMemoryBarriers = nullptr;
+		mipMapGenerationDependencyInfo.imageMemoryBarrierCount = 1;
+		mipMapGenerationDependencyInfo.pImageMemoryBarriers = &mipMapGenerationImageMemoryBarrier;
+		m_vkCmdPipelineBarrier2KHR(buffersCopyCommandBuffer, &mipMapGenerationDependencyInfo);
+
+		VkImageBlit imageBlit = {};
+		imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBlit.srcSubresource.mipLevel = static_cast<uint32_t>(i) - 1;
+		imageBlit.srcSubresource.baseArrayLayer = 0;
+		imageBlit.srcSubresource.layerCount = 1;
+		imageBlit.srcOffsets[0].x = 0;
+		imageBlit.srcOffsets[0].y = 0;
+		imageBlit.srcOffsets[0].z = 0;
+		imageBlit.srcOffsets[1].x = mipWidth;
+		imageBlit.srcOffsets[1].y = mipHeight;
+		imageBlit.srcOffsets[1].z = 1;
+		imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageBlit.dstSubresource.mipLevel = static_cast<uint32_t>(i);
+		imageBlit.dstSubresource.baseArrayLayer = 0;
+		imageBlit.dstSubresource.layerCount = 1;
+		imageBlit.dstOffsets[0].x = 0;
+		imageBlit.dstOffsets[0].y = 0;
+		imageBlit.dstOffsets[0].z = 0;
+		imageBlit.dstOffsets[1].x = mipWidth > 1 ? mipWidth / 2 : 1;
+		imageBlit.dstOffsets[1].y = mipHeight > 1 ? mipHeight / 2 : 1;
+		imageBlit.dstOffsets[1].z = 1;
+		vkCmdBlitImage(buffersCopyCommandBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_LINEAR);
+
+		mipMapGenerationImageMemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		mipMapGenerationImageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+		mipMapGenerationImageMemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		mipMapGenerationImageMemoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+		mipMapGenerationImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		mipMapGenerationImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		mipMapGenerationDependencyInfo.pImageMemoryBarriers = &mipMapGenerationImageMemoryBarrier;
+		m_vkCmdPipelineBarrier2KHR(buffersCopyCommandBuffer, &mipMapGenerationDependencyInfo);
+
+		mipWidth = mipWidth > 1 ? mipWidth / 2 : 1;
+		mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
+	}
+
+	vkEndCommandBuffer(buffersCopyCommandBuffer);
+
+	VkFence buffersCopyFence;
+
+	VkFenceCreateInfo buffersCopyFenceCreateInfo = {};
+	buffersCopyFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	buffersCopyFenceCreateInfo.pNext = nullptr;
+	buffersCopyFenceCreateInfo.flags = 0;
+	TUTORIEL_VK_CHECK(vkCreateFence(m_device, &buffersCopyFenceCreateInfo, nullptr, &buffersCopyFence));
+
+	VkSubmitInfo buffersCopySubmitInfo = {};
+	buffersCopySubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	buffersCopySubmitInfo.pNext = nullptr;
+	buffersCopySubmitInfo.waitSemaphoreCount = 0;
+	buffersCopySubmitInfo.pWaitSemaphores = nullptr;
+	buffersCopySubmitInfo.pWaitDstStageMask = nullptr;
+	buffersCopySubmitInfo.commandBufferCount = 1;
+	buffersCopySubmitInfo.pCommandBuffers = &buffersCopyCommandBuffer;
+	buffersCopySubmitInfo.signalSemaphoreCount = 0;
+	buffersCopySubmitInfo.pSignalSemaphores = nullptr;
+	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &buffersCopySubmitInfo, buffersCopyFence));
+	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &buffersCopyFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
+
+	vkDestroyFence(m_device, buffersCopyFence, nullptr);
+	vkDestroyCommandPool(m_device, buffersCopyCommandPool, nullptr);
+	vmaDestroyBuffer(m_allocator, textureStagingBuffer, textureStagingBufferAllocation);
+}
+
 void RenderingEngine::createScene() {
 	Object cubeObject;
 
