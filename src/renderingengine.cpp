@@ -588,6 +588,19 @@ void RenderingEngine::update() {
 	renderingAttachmentInfo.clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	renderingAttachmentInfo.clearValue.depthStencil = { 0.0f, 0 };
 
+	VkRenderingAttachmentInfo depthRenderingAttachmentInfo = {};
+	depthRenderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	depthRenderingAttachmentInfo.pNext = nullptr;
+	depthRenderingAttachmentInfo.imageView = m_depthImageView;
+	depthRenderingAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthRenderingAttachmentInfo.resolveMode = VK_RESOLVE_MODE_NONE;
+	depthRenderingAttachmentInfo.resolveImageView = VK_NULL_HANDLE;
+	depthRenderingAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthRenderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthRenderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depthRenderingAttachmentInfo.clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	depthRenderingAttachmentInfo.clearValue.depthStencil = { 1.0f, 0 };
+
 	VkRenderingInfo renderingInfo = {};
 	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 	renderingInfo.pNext = nullptr;
@@ -597,7 +610,7 @@ void RenderingEngine::update() {
 	renderingInfo.viewMask = 0;
 	renderingInfo.colorAttachmentCount = 1;
 	renderingInfo.pColorAttachments = &renderingAttachmentInfo;
-	renderingInfo.pDepthAttachment = nullptr;
+	renderingInfo.pDepthAttachment = &depthRenderingAttachmentInfo;
 	renderingInfo.pStencilAttachment = nullptr;
 	m_vkCmdBeginRenderingKHR(m_renderingCommandBuffers[m_currentFrameInFlight], &renderingInfo);
 
@@ -968,9 +981,9 @@ void RenderingEngine::createGraphicsPipeline() {
 	depthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencilStateCreateInfo.pNext = nullptr;
 	depthStencilStateCreateInfo.flags = 0;
-	depthStencilStateCreateInfo.depthTestEnable = VK_FALSE;
-	depthStencilStateCreateInfo.depthWriteEnable = VK_FALSE;
-	depthStencilStateCreateInfo.depthCompareOp = VK_COMPARE_OP_NEVER;
+	depthStencilStateCreateInfo.depthTestEnable = VK_TRUE;
+	depthStencilStateCreateInfo.depthWriteEnable = VK_TRUE;
+	depthStencilStateCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
 	depthStencilStateCreateInfo.stencilTestEnable = VK_FALSE;
 	depthStencilStateCreateInfo.front = {};
@@ -1008,7 +1021,7 @@ void RenderingEngine::createGraphicsPipeline() {
 	pipelineRenderingCreateInfo.viewMask = 0;
 	pipelineRenderingCreateInfo.colorAttachmentCount = 1;
 	pipelineRenderingCreateInfo.pColorAttachmentFormats = &m_swapchainFormat;
-	pipelineRenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+	pipelineRenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
 	pipelineRenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
 	// Creation du layout du pipeline graphique
@@ -1396,7 +1409,7 @@ void RenderingEngine::onResize() {
 	vkDestroyImageView(m_device, m_depthImageView, nullptr);
 	vmaDestroyImage(m_allocator, m_depthImage, m_depthImageAllocation);
 
-	// Creation de l'image de profondeur
+	// Recreation de l'image de profondeur
 	createDepthImage();
 }
 
