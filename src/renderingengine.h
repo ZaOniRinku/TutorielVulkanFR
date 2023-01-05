@@ -68,6 +68,10 @@ private:
 	std::vector<uint32_t> compileShaderFile(const std::string& shaderCode, ShaderType shaderType);
 	void createSwapchain(VkSwapchainKHR oldSwapchain);
 
+	void onResize();
+
+	void createDepthImage();
+
 	void createCube();
 
 	void createScene();
@@ -116,6 +120,10 @@ private:
 	std::vector<VkSemaphore> m_renderCompletedSemaphores;
 
 	VmaAllocator m_allocator;
+
+	VkImage m_depthImage;
+	VkImageView m_depthImageView;
+	VmaAllocation m_depthImageAllocation;
 
 	VkBuffer m_vertexBuffer;
 	VmaAllocation m_vertexBufferAllocation;

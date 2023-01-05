@@ -477,6 +477,9 @@ void RenderingEngine::init() {
 		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 	}
 
+	// Creation de l'image de profondeur
+	createDepthImage();
+
 	// Creation de la scene
 	createScene();
 }
@@ -491,7 +494,7 @@ void RenderingEngine::update() {
 	uint32_t imageIndex;
 	VkResult acquireNextImageResult = vkAcquireNextImageKHR(m_device, m_swapchain, std::numeric_limits<uint64_t>::max(), m_acquireCompletedSemaphores[m_currentFrameInFlight], VK_NULL_HANDLE, &imageIndex);
 	if (acquireNextImageResult == VK_ERROR_OUT_OF_DATE_KHR) {
-		createSwapchain(m_swapchain);
+		onResize();
 	}
 	else if (acquireNextImageResult != VK_SUCCESS && acquireNextImageResult != VK_SUBOPTIMAL_KHR) {
 		std::cout << "Une erreur a eu lieu lors de l'acquisition de l'indice de la prochaine image de la swapchain." << std::endl;
@@ -678,7 +681,7 @@ void RenderingEngine::update() {
 	presentInfo.pResults = nullptr;
 	VkResult queuePresentResult = vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
 	if (queuePresentResult == VK_ERROR_OUT_OF_DATE_KHR) {
-		createSwapchain(m_swapchain);
+		onResize();
 	}
 	else if (queuePresentResult != VK_SUCCESS) {
 		std::cout << "Une erreur a eu lieu lors de la presentation de l'image de la swapchain." << std::endl;
@@ -733,6 +736,10 @@ void RenderingEngine::destroy() {
 
 	// Destruction du layout de descriptor set
 	vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, nullptr);
+
+	// Destruction de l'image de profondeur et sa vue
+	vkDestroyImageView(m_device, m_depthImageView, nullptr);
+	vmaDestroyImage(m_allocator, m_depthImage, m_depthImageAllocation);
 
 	// Destruction des vues des images de la swapchain
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
@@ -1262,21 +1269,6 @@ void RenderingEngine::createSwapchain(VkSwapchainKHR oldSwapchain) {
 	int windowHeight;
 	glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
 
-	while (windowWidth == 0 || windowHeight == 0) {
-		glfwPollEvents();
-		glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
-	}
-
-	// Attente que la swapchain soit libre
-	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
-
-	// Destruction des vues des images de l'ancienne swapchain
-	if (oldSwapchain != VK_NULL_HANDLE) {
-		for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
-			vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
-		}
-	}
-
 	// Viewport et scissor
 	m_viewport.x = 0.0f;
 	m_viewport.y = 0.0f;
@@ -1377,6 +1369,158 @@ void RenderingEngine::createSwapchain(VkSwapchainKHR oldSwapchain) {
 		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1;
 		TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
 	}
+}
+
+void RenderingEngine::onResize() {
+	// Attente que la swapchain soit libre
+	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+
+	int windowWidth;
+	int windowHeight;
+	glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+
+	while (windowWidth == 0 || windowHeight == 0) {
+		glfwPollEvents();
+		glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+	}
+
+	// Destruction des vues des images de l'ancienne swapchain
+	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
+		vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
+	}
+
+	createSwapchain(m_swapchain);
+}
+
+void RenderingEngine::createDepthImage() {
+	int width;
+	int height;
+	glfwGetWindowSize(m_window, &width, &height);
+
+	VkImageCreateInfo depthImageCreateInfo = {};
+	depthImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	depthImageCreateInfo.pNext = nullptr;
+	depthImageCreateInfo.flags = 0;
+	depthImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	depthImageCreateInfo.format = VK_FORMAT_D32_SFLOAT;
+	depthImageCreateInfo.extent.width = static_cast<uint32_t>(width);
+	depthImageCreateInfo.extent.height = static_cast<uint32_t>(height);
+	depthImageCreateInfo.extent.depth = 1;
+	depthImageCreateInfo.mipLevels = 1;
+	depthImageCreateInfo.arrayLayers = 1;
+	depthImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	depthImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	depthImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	depthImageCreateInfo.queueFamilyIndexCount = 1;
+	depthImageCreateInfo.pQueueFamilyIndices = &m_graphicsQueueFamilyIndex;
+	depthImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	VmaAllocationCreateInfo depthImageAllocationCreateInfo = {};
+	depthImageAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+	TUTORIEL_VK_CHECK(vmaCreateImage(m_allocator, &depthImageCreateInfo, &depthImageAllocationCreateInfo, &m_depthImage, &m_depthImageAllocation, nullptr));
+
+	VkImageViewCreateInfo depthImageViewCreateInfo = {};
+	depthImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthImageViewCreateInfo.pNext = nullptr;
+	depthImageViewCreateInfo.flags = 0;
+	depthImageViewCreateInfo.image = m_depthImage;
+	depthImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	depthImageViewCreateInfo.format = VK_FORMAT_D32_SFLOAT;
+	depthImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+	depthImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+	depthImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+	depthImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+	depthImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	depthImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	depthImageViewCreateInfo.subresourceRange.levelCount = 1;
+	depthImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	depthImageViewCreateInfo.subresourceRange.layerCount = 1;
+	TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &depthImageViewCreateInfo, nullptr, &m_depthImageView));
+
+	// Transition de layout VK_IMAGE_LAYOUT_UNDEFINED -> VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+	VkCommandPool depthImageTransitionCommandPool;
+
+	VkCommandPoolCreateInfo depthImageTransitionCommandPoolCreateInfo = {};
+	depthImageTransitionCommandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	depthImageTransitionCommandPoolCreateInfo.pNext = nullptr;
+	depthImageTransitionCommandPoolCreateInfo.flags = 0;
+	depthImageTransitionCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &depthImageTransitionCommandPoolCreateInfo, nullptr, &depthImageTransitionCommandPool));
+
+	VkCommandBuffer depthImageTransitionCommandBuffer;
+
+	VkCommandBufferAllocateInfo depthImageTransitionCommandBufferAllocateInfo = {};
+	depthImageTransitionCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	depthImageTransitionCommandBufferAllocateInfo.pNext = nullptr;
+	depthImageTransitionCommandBufferAllocateInfo.commandPool = depthImageTransitionCommandPool;
+	depthImageTransitionCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	depthImageTransitionCommandBufferAllocateInfo.commandBufferCount = 1;
+	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &depthImageTransitionCommandBufferAllocateInfo, &depthImageTransitionCommandBuffer));
+
+	VkCommandBufferBeginInfo depthImageTransitionBeginInfo = {};
+	depthImageTransitionBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	depthImageTransitionBeginInfo.pNext = nullptr;
+	depthImageTransitionBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	depthImageTransitionBeginInfo.pInheritanceInfo = nullptr;
+	vkBeginCommandBuffer(depthImageTransitionCommandBuffer, &depthImageTransitionBeginInfo);
+
+	VkImageMemoryBarrier2 undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier = {};
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.pNext = nullptr;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.srcAccessMask = 0;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.srcQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.dstQueueFamilyIndex = m_graphicsQueueFamilyIndex;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.image = m_depthImage;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.subresourceRange.levelCount = 1;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.subresourceRange.layerCount = 1;
+
+	VkDependencyInfo undefinedToDepthStencilAttachmentOptimalDependencyInfo = {};
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.pNext = nullptr;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.memoryBarrierCount = 0;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.pMemoryBarriers = nullptr;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.bufferMemoryBarrierCount = 0;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.pBufferMemoryBarriers = nullptr;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.imageMemoryBarrierCount = 1;
+	undefinedToDepthStencilAttachmentOptimalDependencyInfo.pImageMemoryBarriers = &undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier;
+	m_vkCmdPipelineBarrier2KHR(depthImageTransitionCommandBuffer, &undefinedToDepthStencilAttachmentOptimalDependencyInfo);
+
+	vkEndCommandBuffer(depthImageTransitionCommandBuffer);
+
+	VkFence depthImageTransitionFence;
+
+	VkFenceCreateInfo depthImageTransitionFenceCreateInfo = {};
+	depthImageTransitionFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	depthImageTransitionFenceCreateInfo.pNext = nullptr;
+	depthImageTransitionFenceCreateInfo.flags = 0;
+	TUTORIEL_VK_CHECK(vkCreateFence(m_device, &depthImageTransitionFenceCreateInfo, nullptr, &depthImageTransitionFence));
+
+	VkSubmitInfo depthImageTransitionSubmitInfo = {};
+	depthImageTransitionSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	depthImageTransitionSubmitInfo.pNext = nullptr;
+	depthImageTransitionSubmitInfo.waitSemaphoreCount = 0;
+	depthImageTransitionSubmitInfo.pWaitSemaphores = nullptr;
+	depthImageTransitionSubmitInfo.pWaitDstStageMask = nullptr;
+	depthImageTransitionSubmitInfo.commandBufferCount = 1;
+	depthImageTransitionSubmitInfo.pCommandBuffers = &depthImageTransitionCommandBuffer;
+	depthImageTransitionSubmitInfo.signalSemaphoreCount = 0;
+	depthImageTransitionSubmitInfo.pSignalSemaphores = nullptr;
+	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &depthImageTransitionSubmitInfo, depthImageTransitionFence));
+	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &depthImageTransitionFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
+
+	vkDestroyFence(m_device, depthImageTransitionFence, nullptr);
+	vkDestroyCommandPool(m_device, depthImageTransitionCommandPool, nullptr);
 }
 
 void RenderingEngine::createCube() {
@@ -1560,4 +1704,16 @@ void RenderingEngine::createScene() {
 	cubeObject.meshIndex = 0; // Maillage 0 = Cube
 
 	m_objects.push_back(cubeObject);
+
+	Object cubeObject2;
+
+	cubeObject2.index = m_objectIndex++; // Indice 0
+
+	cubeObject2.position = nml::vec3(0.0f, 0.0f, 2.0f); // Milieu du monde
+	cubeObject2.rotation = nml::vec3(0.0f, 0.0f, 0.0f); // Pas de rotation
+	cubeObject2.scale = nml::vec3(1.0f, 1.0f, 1.0f); // Pas de mise à l'échelle
+
+	cubeObject2.meshIndex = 0; // Maillage 0 = Cube
+
+	m_objects.push_back(cubeObject2);
 }
