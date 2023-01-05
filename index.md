@@ -31,3 +31,4 @@
 - [2.3 - La caméra et la matrice modèle](partie2/3.md)
 - [2.4 - Les shaders et les Descriptor Sets](partie2/4.md)
 - [2.5 - Dessiner des maillages](partie2/5.md)
+- [2.5 - Image de profondeur](partie2/6.md)
