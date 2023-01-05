@@ -1110,5 +1110,6 @@ void HelloTriangle::onResize() {
 		vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
 	}
 
+	// Recreation de la swapchain
 	createSwapchain(m_swapchain);
 }
