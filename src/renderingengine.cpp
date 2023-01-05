@@ -257,6 +257,30 @@ void RenderingEngine::init() {
 	// Creation de la swapchain
 	createSwapchain(VK_NULL_HANDLE);
 
+	// Creation du layout de descriptor set
+	VkDescriptorSetLayoutBinding cameraDescriptorSetLayoutBinding = {};
+	cameraDescriptorSetLayoutBinding.binding = 0;
+	cameraDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	cameraDescriptorSetLayoutBinding.descriptorCount = 1;
+	cameraDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	cameraDescriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutBinding objectsDescriptorSetLayoutBinding = {};
+	objectsDescriptorSetLayoutBinding.binding = 1;
+	objectsDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	objectsDescriptorSetLayoutBinding.descriptorCount = 1;
+	objectsDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	objectsDescriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+
+	std::array<VkDescriptorSetLayoutBinding, 2> descriptorSetLayoutBindings = { cameraDescriptorSetLayoutBinding, objectsDescriptorSetLayoutBinding };
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutCreateInfo.pNext = nullptr;
+	descriptorSetLayoutCreateInfo.flags = 0;
+	descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(descriptorSetLayoutBindings.size());
+	descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
+	TUTORIEL_VK_CHECK(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout));
+
 	// Creation du pipeline graphique
 	createGraphicsPipeline();
 
@@ -329,6 +353,132 @@ void RenderingEngine::init() {
 
 	vertexAndIndexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_indexBuffer, &m_indexBufferAllocation, nullptr);
+
+	// Creation d'un cube
+	createCube();
+
+	// Creation des buffers de camera
+	m_cameraBuffers.resize(m_framesInFlight);
+	m_cameraBufferAllocations.resize(m_framesInFlight);
+
+	VkBufferCreateInfo cameraBufferCreateInfo = {};
+	cameraBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	cameraBufferCreateInfo.pNext = nullptr;
+	cameraBufferCreateInfo.flags = 0;
+	cameraBufferCreateInfo.size = sizeof(nml::mat4) * 2;
+	cameraBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	cameraBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	cameraBufferCreateInfo.queueFamilyIndexCount = 1;
+	cameraBufferCreateInfo.pQueueFamilyIndices = &m_graphicsQueueFamilyIndex;
+
+	VmaAllocationCreateInfo cameraBufferAllocationCreateInfo = {};
+	cameraBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+	cameraBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		vmaCreateBuffer(m_allocator, &cameraBufferCreateInfo, &cameraBufferAllocationCreateInfo, &m_cameraBuffers[i], &m_cameraBufferAllocations[i], nullptr);
+	}
+
+	// Creation des buffers d'ohjets
+	m_objectsBuffers.resize(m_framesInFlight);
+	m_objectsBufferAllocations.resize(m_framesInFlight);
+
+	VkBufferCreateInfo objectsBufferCreateInfo = {};
+	objectsBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	objectsBufferCreateInfo.pNext = nullptr;
+	objectsBufferCreateInfo.flags = 0;
+	objectsBufferCreateInfo.size = sizeof(nml::mat4) * 2048;
+	objectsBufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	objectsBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	objectsBufferCreateInfo.queueFamilyIndexCount = 1;
+	objectsBufferCreateInfo.pQueueFamilyIndices = &m_graphicsQueueFamilyIndex;
+
+	VmaAllocationCreateInfo objectsBufferAllocationCreateInfo = {};
+	objectsBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+	objectsBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		vmaCreateBuffer(m_allocator, &objectsBufferCreateInfo, &objectsBufferAllocationCreateInfo, &m_objectsBuffers[i], &m_objectsBufferAllocations[i], nullptr);
+	}
+
+	// Creation du descriptor pool
+	VkDescriptorPoolSize cameraDescriptorPoolSize = {};
+	cameraDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	cameraDescriptorPoolSize.descriptorCount = 1;
+
+	VkDescriptorPoolSize objectsDescriptorPoolSize = {};
+	objectsDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	objectsDescriptorPoolSize.descriptorCount = 1;
+
+	std::array<VkDescriptorPoolSize, 2> descriptorPoolSizes = { cameraDescriptorPoolSize, objectsDescriptorPoolSize };
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
+	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.pNext = nullptr;
+	descriptorPoolCreateInfo.flags = 0;
+	descriptorPoolCreateInfo.maxSets = m_framesInFlight;
+	descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
+	descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
+	TUTORIEL_VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolCreateInfo, nullptr, &m_descriptorPool));
+
+	// Allocation des descriptor sets
+	m_descriptorSets.resize(m_framesInFlight);
+	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptorSetAllocateInfo.pNext = nullptr;
+	descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+	descriptorSetAllocateInfo.descriptorSetCount = 1;
+	descriptorSetAllocateInfo.pSetLayouts = &m_descriptorSetLayout;
+
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		TUTORIEL_VK_CHECK(vkAllocateDescriptorSets(m_device, &descriptorSetAllocateInfo, &m_descriptorSets[i]));
+	}
+
+	// Mise a jour des descriptor sets
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+		VkDescriptorBufferInfo cameraDescriptorBufferInfo;
+		VkDescriptorBufferInfo objectsDescriptorBufferInfo;
+		std::vector<VkDescriptorImageInfo> texturesDescriptorImageInfos;
+
+		cameraDescriptorBufferInfo.buffer = m_cameraBuffers[i];
+		cameraDescriptorBufferInfo.offset = 0;
+		cameraDescriptorBufferInfo.range = sizeof(nml::mat4) * 2;
+
+		VkWriteDescriptorSet cameraDescriptorWriteDescriptorSet = {};
+		cameraDescriptorWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		cameraDescriptorWriteDescriptorSet.pNext = nullptr;
+		cameraDescriptorWriteDescriptorSet.dstSet = m_descriptorSets[i];
+		cameraDescriptorWriteDescriptorSet.dstBinding = 0;
+		cameraDescriptorWriteDescriptorSet.dstArrayElement = 0;
+		cameraDescriptorWriteDescriptorSet.descriptorCount = 1;
+		cameraDescriptorWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		cameraDescriptorWriteDescriptorSet.pImageInfo = nullptr;
+		cameraDescriptorWriteDescriptorSet.pBufferInfo = &cameraDescriptorBufferInfo;
+		cameraDescriptorWriteDescriptorSet.pTexelBufferView = nullptr;
+		writeDescriptorSets.push_back(cameraDescriptorWriteDescriptorSet);
+
+		objectsDescriptorBufferInfo.buffer = m_objectsBuffers[i];
+		objectsDescriptorBufferInfo.offset = 0;
+		objectsDescriptorBufferInfo.range = sizeof(nml::mat4) * 2048;
+
+		VkWriteDescriptorSet objectsDescriptorWriteDescriptorSet = {};
+		objectsDescriptorWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectsDescriptorWriteDescriptorSet.pNext = nullptr;
+		objectsDescriptorWriteDescriptorSet.dstSet = m_descriptorSets[i];
+		objectsDescriptorWriteDescriptorSet.dstBinding = 1;
+		objectsDescriptorWriteDescriptorSet.dstArrayElement = 0;
+		objectsDescriptorWriteDescriptorSet.descriptorCount = 1;
+		objectsDescriptorWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		objectsDescriptorWriteDescriptorSet.pImageInfo = nullptr;
+		objectsDescriptorWriteDescriptorSet.pBufferInfo = &objectsDescriptorBufferInfo;
+		objectsDescriptorWriteDescriptorSet.pTexelBufferView = nullptr;
+		writeDescriptorSets.push_back(objectsDescriptorWriteDescriptorSet);
+
+		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+	}
+
+	// Creation de la scene
+	createScene();
 }
 
 void RenderingEngine::update() {
@@ -347,6 +497,29 @@ void RenderingEngine::update() {
 		std::cout << "Une erreur a eu lieu lors de l'acquisition de l'indice de la prochaine image de la swapchain." << std::endl;
 		exit(1);
 	}
+
+	// Mise à jour du buffer de caméra
+	const float toRad = 3.1415926535897932384626433832795f / 180.0f;
+	nml::mat4 cameraView = nml::lookAtRH(nml::vec3(0.0f, 2.0f, -3.0f), nml::vec3(0.0f), nml::vec3(0.0f, 1.0f, 0.0));
+	nml::mat4 cameraProjection = nml::perspectiveRH(90.0f * toRad, m_viewport.width / m_viewport.height, 0.05f, 100.0f);
+	cameraProjection[1][1] *= -1.0f;
+	std::array<nml::mat4, 2> cameraMatrices{ cameraView, cameraProjection };
+
+	void* data;
+	vmaMapMemory(m_allocator, m_cameraBufferAllocations[m_currentFrameInFlight], &data);
+	memcpy(data, cameraMatrices.data(), sizeof(nml::mat4) * 2);
+	vmaUnmapMemory(m_allocator, m_cameraBufferAllocations[m_currentFrameInFlight]);
+
+	// Mise à jour des buffers des objets
+	vmaMapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight], &data);
+	for (size_t i = 0; i < m_objects.size(); i++) {
+		nml::mat4 objectModel = nml::translate(m_objects[i].position) * nml::rotate(m_objects[i].rotation.x, nml::vec3(1.0f, 0.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.y, nml::vec3(0.0f, 1.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.z, nml::vec3(0.0f, 0.0f, 1.0f)) * nml::scale(m_objects[i].scale);
+
+		size_t offset = i * sizeof(nml::mat4);
+
+		memcpy(reinterpret_cast<char*>(data) + offset, objectModel.data(), sizeof(nml::mat4));
+	}
+	vmaUnmapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight]);
 
 	// Reinitialisation du command buffer alloue avec le command pool
 	TUTORIEL_VK_CHECK(vkResetCommandPool(m_device, m_renderingCommandPools[m_currentFrameInFlight], 0));
@@ -390,6 +563,14 @@ void RenderingEngine::update() {
 
 	m_vkCmdPipelineBarrier2KHR(m_renderingCommandBuffers[m_currentFrameInFlight], &undefinedToColorAttachmentOptimalDependencyInfo);
 
+	// Lien du vertex et de l'index buffer
+	VkDeviceSize vertexBufferOffset = 0;
+	vkCmdBindVertexBuffers(m_renderingCommandBuffers[m_currentFrameInFlight], 0, 1, &m_vertexBuffer, &vertexBufferOffset);
+	vkCmdBindIndexBuffer(m_renderingCommandBuffers[m_currentFrameInFlight], m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+	// Lien du descriptor set 0
+	vkCmdBindDescriptorSets(m_renderingCommandBuffers[m_currentFrameInFlight], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipelineLayout, 0, 1, &m_descriptorSets[m_currentFrameInFlight], 0, nullptr);
+
 	// Debut de la passe de rendu
 	VkRenderingAttachmentInfo renderingAttachmentInfo = {};
 	renderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -422,8 +603,13 @@ void RenderingEngine::update() {
 	vkCmdSetViewport(m_renderingCommandBuffers[m_currentFrameInFlight], 0, 1, &m_viewport);
 	vkCmdSetScissor(m_renderingCommandBuffers[m_currentFrameInFlight], 0, 1, &m_scissor);
 
-	// Dessin
-	vkCmdDraw(m_renderingCommandBuffers[m_currentFrameInFlight], 3, 1, 0, 0);
+	for (size_t i = 0; i < m_objects.size(); i++) {
+		// Passage de l'indice de l'objet avec une push constant
+		vkCmdPushConstants(m_renderingCommandBuffers[m_currentFrameInFlight], m_graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t), &m_objects[i].index);
+
+		// Dessin
+		vkCmdDrawIndexed(m_renderingCommandBuffers[m_currentFrameInFlight], m_meshes[m_objects[i].meshIndex].indexCount, 1, m_meshes[m_objects[i].meshIndex].firstIndex, m_meshes[m_objects[i].meshIndex].vertexOffset, 0);
+	}
 
 	// Fin de la passe de rendu
 	m_vkCmdEndRenderingKHR(m_renderingCommandBuffers[m_currentFrameInFlight]);
@@ -507,6 +693,19 @@ void RenderingEngine::destroy() {
 	// Attente que la queue du GPU ne soit plus utilisee
 	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
 
+	// Destruction du descriptor pool
+	vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+
+	// Destruction des buffers d'objets
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		vmaDestroyBuffer(m_allocator, m_objectsBuffers[i], m_objectsBufferAllocations[i]);
+	}
+
+	// Destruction des buffers de camera
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		vmaDestroyBuffer(m_allocator, m_cameraBuffers[i], m_cameraBufferAllocations[i]);
+	}
+
 	// Destruction des vertex et index buffers
 	vmaDestroyBuffer(m_allocator, m_indexBuffer, m_indexBufferAllocation);
 	vmaDestroyBuffer(m_allocator, m_vertexBuffer, m_vertexBufferAllocation);
@@ -531,6 +730,9 @@ void RenderingEngine::destroy() {
 
 	// Destruction du layout du pipeline graphique
 	vkDestroyPipelineLayout(m_device, m_graphicsPipelineLayout, nullptr);
+
+	// Destruction du layout de descriptor set
+	vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, nullptr);
 
 	// Destruction des vues des images de la swapchain
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
@@ -619,10 +821,10 @@ bool RenderingEngine::deviceExtensionAvailable(const char* extensionName) {
 
 void RenderingEngine::createGraphicsPipeline() {
 	// Compilation des shaders
-	std::string vertexShader = readAsciiFile("../shaders/triangle.vert");
+	std::string vertexShader = readAsciiFile("../shaders/model.vert");
 	std::vector<uint32_t> vertexShaderSpv = compileShaderFile(vertexShader, ShaderType::Vertex);
 
-	std::string fragmentShader = readAsciiFile("../shaders/triangle.frag");
+	std::string fragmentShader = readAsciiFile("../shaders/model.frag");
 	std::vector<uint32_t> fragmentShaderSpv = compileShaderFile(fragmentShader, ShaderType::Fragment);
 
 	// Creation des modules de shaders
@@ -665,14 +867,39 @@ void RenderingEngine::createGraphicsPipeline() {
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageCreateInfos = { vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo };
 
 	// Vertices en entree
+	VkVertexInputBindingDescription vertexInputBindingDescription = {};
+	vertexInputBindingDescription.binding = 0;
+	vertexInputBindingDescription.stride = sizeof(Vertex);
+	vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	VkVertexInputAttributeDescription vertexPositionInputAttributeDescription = {};
+	vertexPositionInputAttributeDescription.location = 0;
+	vertexPositionInputAttributeDescription.binding = 0;
+	vertexPositionInputAttributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexPositionInputAttributeDescription.offset = 0;
+
+	VkVertexInputAttributeDescription vertexNormalInputAttributeDescription = {};
+	vertexNormalInputAttributeDescription.location = 1;
+	vertexNormalInputAttributeDescription.binding = 0;
+	vertexNormalInputAttributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexNormalInputAttributeDescription.offset = offsetof(Vertex, normal);
+
+	VkVertexInputAttributeDescription vertexUVInputAttributeDescription = {};
+	vertexUVInputAttributeDescription.location = 2;
+	vertexUVInputAttributeDescription.binding = 0;
+	vertexUVInputAttributeDescription.format = VK_FORMAT_R32G32_SFLOAT;
+	vertexUVInputAttributeDescription.offset = offsetof(Vertex, uv);
+
+	std::array<VkVertexInputAttributeDescription, 3> vertexInputAttributeDescriptions = { vertexPositionInputAttributeDescription, vertexNormalInputAttributeDescription, vertexUVInputAttributeDescription };
+
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
 	vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputStateCreateInfo.pNext = nullptr;
 	vertexInputStateCreateInfo.flags = 0;
-	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-	vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
-	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+	vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
+	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributeDescriptions.size());
+	vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
 
 	// Assemblement des vertices en primitives
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {};
@@ -778,14 +1005,19 @@ void RenderingEngine::createGraphicsPipeline() {
 	pipelineRenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
 	// Creation du layout du pipeline graphique
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRange.offset = 0;
+	pushConstantRange.size = sizeof(uint32_t);
+
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCreateInfo.pNext = nullptr;
 	pipelineLayoutCreateInfo.flags = 0;
-	pipelineLayoutCreateInfo.setLayoutCount = 0;
-	pipelineLayoutCreateInfo.pSetLayouts = nullptr;
-	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	pipelineLayoutCreateInfo.pSetLayouts = &m_descriptorSetLayout;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+	pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 	TUTORIEL_VK_CHECK(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_graphicsPipelineLayout));
 
 	// Creation du pipeline graphique
@@ -1307,4 +1539,25 @@ void RenderingEngine::createCube() {
 	vkDestroyFence(m_device, buffersCopyFence, nullptr);
 	vkDestroyCommandPool(m_device, buffersCopyCommandPool, nullptr);
 	vmaDestroyBuffer(m_allocator, vertexAndIndexStagingBuffer, vertexAndIndexStagingBufferAllocation);
+
+	// Ajout du cube à la liste des maillages
+	Mesh cube;
+	cube.indexCount = 36;
+	cube.firstIndex = 0;
+	cube.vertexOffset = 0;
+	m_meshes.push_back(cube);
+}
+
+void RenderingEngine::createScene() {
+	Object cubeObject;
+
+	cubeObject.index = m_objectIndex++; // Indice 0
+
+	cubeObject.position = nml::vec3(0.0f, 0.0f, 0.0f); // Milieu du monde
+	cubeObject.rotation = nml::vec3(0.0f, 0.0f, 0.0f); // Pas de rotation
+	cubeObject.scale = nml::vec3(1.0f, 1.0f, 1.0f); // Pas de mise à l'échelle
+
+	cubeObject.meshIndex = 0; // Maillage 0 = Cube
+
+	m_objects.push_back(cubeObject);
 }

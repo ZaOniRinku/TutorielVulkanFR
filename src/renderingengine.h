@@ -34,6 +34,22 @@ struct Vertex {
 	nml::vec2 uv;
 };
 
+struct Mesh {
+	uint32_t indexCount;
+	uint32_t firstIndex;
+	int32_t vertexOffset;
+};
+
+struct Object {
+	uint32_t index;
+
+	nml::vec3 position;
+	nml::vec3 rotation;
+	nml::vec3 scale;
+
+	size_t meshIndex;
+};
+
 class RenderingEngine {
 public:
 	void init();
@@ -53,6 +69,8 @@ private:
 	void createSwapchain(VkSwapchainKHR oldSwapchain);
 
 	void createCube();
+
+	void createScene();
 
 private:
 	VkInstance m_instance; // Le prefixe m_ sert a differencier les attributs des classes aux variables locales
@@ -78,6 +96,10 @@ private:
 	VkPipeline m_graphicsPipeline;
 	VkPipelineLayout m_graphicsPipelineLayout;
 
+	VkDescriptorSetLayout m_descriptorSetLayout;
+	VkDescriptorPool m_descriptorPool;
+	std::vector<VkDescriptorSet> m_descriptorSets;
+
 	VkViewport m_viewport;
 	VkRect2D m_scissor;
 
@@ -99,6 +121,17 @@ private:
 	VmaAllocation m_vertexBufferAllocation;
 	VkBuffer m_indexBuffer;
 	VmaAllocation m_indexBufferAllocation;
+
+	std::vector<VkBuffer> m_cameraBuffers;
+	std::vector<VmaAllocation> m_cameraBufferAllocations;
+
+	std::vector<VkBuffer> m_objectsBuffers;
+	std::vector<VmaAllocation> m_objectsBufferAllocations;
+
+	std::vector<Mesh> m_meshes;
+
+	std::vector<Object> m_objects;
+	uint32_t m_objectIndex = 0;
 
 	PFN_vkCmdBeginRenderingKHR m_vkCmdBeginRenderingKHR;
 	PFN_vkCmdEndRenderingKHR m_vkCmdEndRenderingKHR;
