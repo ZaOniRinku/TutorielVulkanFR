@@ -1389,7 +1389,15 @@ void RenderingEngine::onResize() {
 		vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
 	}
 
+	// Recreation de la swapchain
 	createSwapchain(m_swapchain);
+
+	// Destruction de l'image de profondeur et de sa vue
+	vkDestroyImageView(m_device, m_depthImageView, nullptr);
+	vmaDestroyImage(m_allocator, m_depthImage, m_depthImageAllocation);
+
+	// Creation de l'image de profondeur
+	createDepthImage();
 }
 
 void RenderingEngine::createDepthImage() {
