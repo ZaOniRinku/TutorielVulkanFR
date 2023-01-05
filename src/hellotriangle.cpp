@@ -308,7 +308,7 @@ void HelloTriangle::update() {
 	uint32_t imageIndex;
 	VkResult acquireNextImageResult = vkAcquireNextImageKHR(m_device, m_swapchain, std::numeric_limits<uint64_t>::max(), m_acquireCompletedSemaphores[m_currentFrameInFlight], VK_NULL_HANDLE, &imageIndex);
 	if (acquireNextImageResult == VK_ERROR_OUT_OF_DATE_KHR) {
-		createSwapchain(m_swapchain);
+		onResize();
 	}
 	else if (acquireNextImageResult != VK_SUCCESS && acquireNextImageResult != VK_SUBOPTIMAL_KHR) {
 		std::cout << "Une erreur a eu lieu lors de l'acquisition de l'indice de la prochaine image de la swapchain." << std::endl;
@@ -459,7 +459,7 @@ void HelloTriangle::update() {
 	presentInfo.pResults = nullptr;
 	VkResult queuePresentResult = vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
 	if (queuePresentResult == VK_ERROR_OUT_OF_DATE_KHR) {
-		createSwapchain(m_swapchain);
+		onResize();
 	}
 	else if (queuePresentResult != VK_SUCCESS) {
 		std::cout << "Une erreur a eu lieu lors de la presentation de l'image de la swapchain." << std::endl;
@@ -990,21 +990,6 @@ void HelloTriangle::createSwapchain(VkSwapchainKHR oldSwapchain) {
 	int windowHeight;
 	glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
 
-	while (windowWidth == 0 || windowHeight == 0) {
-		glfwPollEvents();
-		glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
-	}
-
-	// Attente que la swapchain soit libre
-	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
-
-	// Destruction des vues des images de l'ancienne swapchain
-	if (oldSwapchain != VK_NULL_HANDLE) {
-		for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
-			vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
-		}
-	}
-
 	// Viewport et scissor
 	m_viewport.x = 0.0f;
 	m_viewport.y = 0.0f;
@@ -1105,4 +1090,25 @@ void HelloTriangle::createSwapchain(VkSwapchainKHR oldSwapchain) {
 		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1;
 		TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
 	}
+}
+
+void HelloTriangle::onResize() {
+	// Attente que la swapchain soit libre
+	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+
+	int windowWidth;
+	int windowHeight;
+	glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+
+	while (windowWidth == 0 || windowHeight == 0) {
+		glfwPollEvents();
+		glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+	}
+
+	// Destruction des vues des images de l'ancienne swapchain
+	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
+		vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
+	}
+
+	createSwapchain(m_swapchain);
 }
