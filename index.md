@@ -28,3 +28,6 @@
 ### Partie 2 : Dessiner des modèles 3D
 - [2.1 - Structure du programme](partie2/1.md)
 - [2.2 - Vertex et index buffers](partie2/2.md)
+- [2.3 - La caméra et la matrice modèle](partie2/3.md)
+- [2.4 - Les shaders et les Descriptor Sets](partie2/4.md)
+- [2.5 - Dessiner des maillages](partie2/5.md)
