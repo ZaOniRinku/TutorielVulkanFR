@@ -11,6 +11,8 @@
 #include <array>
 #include <fstream>
 #include <limits>
+#include <unordered_map>
+#include <cstdlib>
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 	std::cout << pCallbackData->pMessage << std::endl;
@@ -384,9 +386,6 @@ void RenderingEngine::init() {
 
 	vertexAndIndexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_indexBuffer, &m_indexBufferAllocation, nullptr);
-
-	// Creation d'un cube
-	createCube();
 
 	// Creation de l'echantillonneur de textures
 	VkSamplerCreateInfo textureSamplerCreateInfo = {};
@@ -1634,72 +1633,138 @@ void RenderingEngine::createDepthImage() {
 	vkDestroyCommandPool(m_device, depthImageTransitionCommandPool, nullptr);
 }
 
-void RenderingEngine::createCube() {
-	std::array<Vertex, 24> vertices = { {
-		{ {1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 0
-		{ {-1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 1
-		{ {-1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 2
-		{ {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 3
-		{ {1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} }, // Vertex 4
-		{ {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} }, // Vertex 5
-		{ {-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} }, // Vertex 6
-		{ {-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f} }, // Vertex 7
-		{ {-1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 8
-		{ {-1.0f, 1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 9
-		{ {-1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 10
-		{ {-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 11
-		{ {-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 12
-		{ {1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 13
-		{ {1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 14
-		{ {-1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 15
-		{ {1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} }, // Vertex 16
-		{ {1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // Vertex 17
-		{ {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }, // Vertex 18
-		{ {1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} }, // Vertex 19
-		{ {-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f} }, // Vertex 20
-		{ {-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f} }, // Vertex 21
-		{ {1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f} }, // Vertex 22
-		{ {1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f} } // Vertex 23
-	} };
+uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
 
-	std::array<uint32_t, 36> indices = {
-		0,
-		1,
-		2,
-		0,
-		2,
-		3,
-		4,
-		5,
-		6,
-		4,
-		6,
-		7,
-		8,
-		9,
-		10,
-		8,
-		10,
-		11,
-		12,
-		13,
-		14,
-		12,
-		14,
-		15,
-		16,
-		17,
-		18,
-		16,
-		18,
-		19,
-		20,
-		21,
-		22,
-		20,
-		22,
-		23
-	};
+	std::ifstream file(modelFilePath);
+
+	// Ouverture du fichier
+	if (!file.is_open()) {
+		std::cout << "Impossible d'ouvrir le fichier de modele \"" + modelFilePath + "." << std::endl;
+		exit(1);
+	}
+
+	std::vector<nml::vec3> positions;
+	std::vector<nml::vec3> normals;
+	std::vector<nml::vec2> uvs;
+
+	std::unordered_map<std::string, uint32_t> uniqueVertices;
+
+	std::string line;
+	while (std::getline(file, line)) {
+		// Les commentaires doivent etre ignores
+		if (line[0] == '#') {
+			continue;
+		}
+
+		// Tokens de la ligne
+		std::vector<std::string> tokens;
+		size_t spacePosition = 0;
+		while ((spacePosition = line.find(' ')) != std::string::npos) {
+			tokens.push_back(line.substr(0, spacePosition));
+			line.erase(0, spacePosition + 1);
+		}
+		tokens.push_back(line);
+
+		// Lecture des jetons
+		// Position
+		if (tokens[0] == "v") {
+			positions.push_back({
+				static_cast<float>(std::atof(tokens[1].c_str())),
+				static_cast<float>(std::atof(tokens[2].c_str())),
+				static_cast<float>(std::atof(tokens[3].c_str()))
+				});
+		}
+		// Normale
+		else if (tokens[0] == "vn") {
+			normals.push_back({
+				static_cast<float>(std::atof(tokens[1].c_str())),
+				static_cast<float>(std::atof(tokens[2].c_str())),
+				static_cast<float>(std::atof(tokens[3].c_str()))
+				});
+		}
+		// Coordonnées de textures
+		else if (tokens[0] == "vt") {
+			uvs.push_back({
+				static_cast<float>(std::atof(tokens[1].c_str())),
+				static_cast<float>(std::atof(tokens[2].c_str()))
+				});
+		}
+		// Face
+		else if (tokens[0] == "f") {
+			std::vector<uint32_t> tmpIndices;
+			for (size_t i = 1; i < tokens.size(); i++) {
+				Vertex vertex = {};
+
+				std::string tmp = tokens[i];
+				std::vector<std::string> valueIndices;
+				size_t slashPosition = 0;
+				while ((slashPosition = tmp.find('/')) != std::string::npos) {
+					valueIndices.push_back(tmp.substr(0, slashPosition));
+					tmp.erase(0, slashPosition + 1);
+				}
+				valueIndices.push_back(tmp);
+
+				for (size_t j = 0; j < valueIndices.size(); j++) {
+					if (valueIndices[j] != "") {
+						// v/vt/vn
+						// Indice de position
+						if (j == 0) {
+							vertex.position[0] = positions[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][0];
+							vertex.position[1] = positions[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][1];
+							vertex.position[2] = positions[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][2];
+						}
+						// Indice de coordonnées de texture
+						else if (j == 1) {
+							vertex.uv[0] = uvs[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][0];
+							vertex.uv[1] = uvs[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][1];
+						}
+						// Indice de normale
+						else if (j == 2) {
+							vertex.normal[0] = normals[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][0];
+							vertex.normal[1] = normals[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][1];
+							vertex.normal[2] = normals[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][2];
+						}
+					}
+				}
+
+				if (uniqueVertices.count(tokens[i]) == 0) {
+					uniqueVertices[tokens[i]] = static_cast<uint32_t>(vertices.size());
+					vertices.push_back(vertex);
+				}
+				tmpIndices.push_back(uniqueVertices[tokens[i]]);
+			}
+
+			// Une face peut être un triangle ou un rectangle
+			// Triangle
+			if (tmpIndices.size() == 3) {
+				indices.insert(indices.end(), std::make_move_iterator(tmpIndices.begin()), std::make_move_iterator(tmpIndices.end()));
+			}
+			// Rectangle
+			else if (tmpIndices.size() == 4) {
+				// Triangle 1
+				indices.push_back(tmpIndices[0]);
+				indices.push_back(tmpIndices[1]);
+				indices.push_back(tmpIndices[2]);
+
+				// Triangle 2
+				indices.push_back(tmpIndices[0]);
+				indices.push_back(tmpIndices[2]);
+				indices.push_back(tmpIndices[3]);
+			}
+		}
+	}
+
+	// Fermeture du fichier
+	file.close();
+
+	// Ajout du maillage à la liste
+	Mesh mesh;
+	mesh.indexCount = static_cast<uint32_t>(indices.size());
+	mesh.firstIndex = m_currentIndexOffset;
+	mesh.vertexOffset = m_currentVertexOffset;
+	m_meshes.push_back(mesh);
 
 	// Creation du staging buffer
 	VkBuffer vertexAndIndexStagingBuffer;
@@ -1709,7 +1774,7 @@ void RenderingEngine::createCube() {
 	vertexAndIndexStagingBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexAndIndexStagingBufferCreateInfo.pNext = nullptr;
 	vertexAndIndexStagingBufferCreateInfo.flags = 0;
-	vertexAndIndexStagingBufferCreateInfo.size = 134217728;
+	vertexAndIndexStagingBufferCreateInfo.size = (vertices.size() * sizeof(Vertex)) + (indices.size() * sizeof(uint32_t));
 	vertexAndIndexStagingBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	vertexAndIndexStagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	vertexAndIndexStagingBufferCreateInfo.queueFamilyIndexCount = 1;
@@ -1725,7 +1790,7 @@ void RenderingEngine::createCube() {
 
 	TUTORIEL_VK_CHECK(vmaMapMemory(m_allocator, vertexAndIndexStagingBufferAllocation, &data));
 	memcpy(data, vertices.data(), vertices.size() * sizeof(Vertex));
-	memcpy(reinterpret_cast<char*>(data) + 67108864, indices.data(), indices.size() * sizeof(uint32_t));
+	memcpy(reinterpret_cast<char*>(data) + (vertices.size() * sizeof(Vertex)), indices.data(), indices.size() * sizeof(uint32_t));
 	vmaUnmapMemory(m_allocator, vertexAndIndexStagingBufferAllocation);
 
 	// Copie le Staging Buffer vers le Vertex Buffer et l'Index Buffer
@@ -1757,13 +1822,13 @@ void RenderingEngine::createCube() {
 
 	VkBufferCopy vertexBufferCopy = {};
 	vertexBufferCopy.srcOffset = 0;
-	vertexBufferCopy.dstOffset = 0;
+	vertexBufferCopy.dstOffset = m_currentVertexOffset * sizeof(Vertex);
 	vertexBufferCopy.size = vertices.size() * sizeof(Vertex);
 	vkCmdCopyBuffer(buffersCopyCommandBuffer, vertexAndIndexStagingBuffer, m_vertexBuffer, 1, &vertexBufferCopy);
 
 	VkBufferCopy indexBufferCopy = {};
-	indexBufferCopy.srcOffset = 67108864;
-	indexBufferCopy.dstOffset = 0;
+	indexBufferCopy.srcOffset = (vertices.size() * sizeof(Vertex));
+	indexBufferCopy.dstOffset = m_currentIndexOffset * sizeof(uint32_t);
 	indexBufferCopy.size = indices.size() * sizeof(uint32_t);
 	vkCmdCopyBuffer(buffersCopyCommandBuffer, vertexAndIndexStagingBuffer, m_indexBuffer, 1, &indexBufferCopy);
 
@@ -1795,12 +1860,11 @@ void RenderingEngine::createCube() {
 	vkDestroyCommandPool(m_device, buffersCopyCommandPool, nullptr);
 	vmaDestroyBuffer(m_allocator, vertexAndIndexStagingBuffer, vertexAndIndexStagingBufferAllocation);
 
-	// Ajout du cube à la liste des maillages
-	Mesh cube;
-	cube.indexCount = 36;
-	cube.firstIndex = 0;
-	cube.vertexOffset = 0;
-	m_meshes.push_back(cube);
+	// Decalage des vertices et des indices pour le prochain maillage
+	m_currentVertexOffset += static_cast<int32_t>(vertices.size());
+	m_currentIndexOffset += static_cast<uint32_t>(indices.size());
+
+	return static_cast<uint32_t>(m_meshes.size() - 1);
 }
 
 uint32_t RenderingEngine::findMipLevels(uint32_t width, uint32_t height) {
@@ -2064,29 +2128,32 @@ void RenderingEngine::createTexture() {
 }
 
 void RenderingEngine::createScene() {
-	Object cubeObject;
+	uint32_t cubeMesh = loadModel("../models/cube.obj");
+	uint32_t sphereMesh = loadModel("../models/sphere.obj");
 
-	cubeObject.index = m_objectIndex++; // Indice 0
+	Object object1;
 
-	cubeObject.position = nml::vec3(0.0f, 0.0f, 0.0f); // Milieu du monde
-	cubeObject.rotation = nml::vec3(0.0f, 0.0f, 0.0f); // Pas de rotation
-	cubeObject.scale = nml::vec3(1.0f, 1.0f, 1.0f); // Pas de mise à l'échelle
+	object1.index = m_objectIndex++; // Indice 0
 
-	cubeObject.meshIndex = 0; // Maillage 0 = Cube
-	cubeObject.textureIndex = 0; // Texture 0
+	object1.position = nml::vec3(-2.0f, 0.0f, 0.0f);
+	object1.rotation = nml::vec3(0.0f, 0.0f, 0.0f);
+	object1.scale = nml::vec3(1.0f, 1.0f, 1.0f);
 
-	m_objects.push_back(cubeObject);
+	object1.meshIndex = cubeMesh;
+	object1.textureIndex = 0;
 
-	Object cubeObject2;
+	m_objects.push_back(object1);
 
-	cubeObject2.index = m_objectIndex++; // Indice 1
+	Object object2;
 
-	cubeObject2.position = nml::vec3(0.0f, 0.0f, 2.0f);
-	cubeObject2.rotation = nml::vec3(0.0f, 0.0f, 0.0f);
-	cubeObject2.scale = nml::vec3(1.0f, 1.0f, 1.0f);
+	object2.index = m_objectIndex++; // Indice 1
 
-	cubeObject2.meshIndex = 0; // Maillage 0 = Cube
-	cubeObject2.textureIndex = 0; // Texture 0
+	object2.position = nml::vec3(2.0f, 0.0f, 0.0f);
+	object2.rotation = nml::vec3(0.0f, 0.0f, 0.0f);
+	object2.scale = nml::vec3(1.0f, 1.0f, 1.0f);
 
-	m_objects.push_back(cubeObject2);
+	object2.meshIndex = sphereMesh;
+	object2.textureIndex = 0;
+
+	m_objects.push_back(object2);
 }

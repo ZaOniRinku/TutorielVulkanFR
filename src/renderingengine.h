@@ -73,7 +73,7 @@ private:
 
 	void createDepthImage();
 
-	void createCube();
+	uint32_t loadModel(const std::string& modelFilePath);
 
 	uint32_t findMipLevels(uint32_t width, uint32_t height);
 	void createTexture();
@@ -146,6 +146,8 @@ private:
 	VkSampler m_textureSampler;
 
 	std::vector<Mesh> m_meshes;
+	int32_t m_currentVertexOffset = 0;
+	uint32_t m_currentIndexOffset = 0;
 
 	std::vector<Object> m_objects;
 	uint32_t m_objectIndex = 0;
