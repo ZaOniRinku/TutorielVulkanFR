@@ -435,7 +435,7 @@ void RenderingEngine::init() {
 		vmaCreateBuffer(m_allocator, &cameraBufferCreateInfo, &cameraBufferAllocationCreateInfo, &m_cameraBuffers[i], &m_cameraBufferAllocations[i], nullptr);
 	}
 
-	// Creation des buffers d'ohjets
+	// Creation des buffers d'objets
 	m_objectsBuffers.resize(m_framesInFlight);
 	m_objectsBufferAllocations.resize(m_framesInFlight);
 
