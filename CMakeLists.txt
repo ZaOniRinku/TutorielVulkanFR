@@ -33,7 +33,6 @@ set(HEADERS
 add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES} ${HEADERS}) # On va vouloir créer un exécutable du même nom que le projet et avec les fichiers du dossier src
 
 target_include_directories(${PROJECT_NAME} PRIVATE external/stb) # On inclut le dossier de stb
-target_include_directories(${PROJECT_NAME} PRIVATE external/tinyobjloader) # On inclut le dossier de tinyobjloader
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw glslang SPIRV nml VulkanMemoryAllocator Vulkan::Vulkan) # On lie GLFW, glslang, SPIRV (inclut dans Glslang), nml, VulkanMemoryAllocator et Vulkan à notre projet
 
