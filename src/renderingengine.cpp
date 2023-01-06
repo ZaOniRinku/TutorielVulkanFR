@@ -197,15 +197,26 @@ void RenderingEngine::init() {
 	deviceQueueCreateInfo.queueCount = 1;
 	deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
 
+	VkPhysicalDeviceDescriptorIndexingFeatures physicalDeviceDescriptorIndexingFeatures = {};
+	physicalDeviceDescriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+	physicalDeviceDescriptorIndexingFeatures.pNext = nullptr;
+	physicalDeviceDescriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+	physicalDeviceDescriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+	physicalDeviceDescriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+	physicalDeviceDescriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+
 	VkPhysicalDeviceDynamicRenderingFeatures physicalDeviceDynamicRenderingFeatures = {};
 	physicalDeviceDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-	physicalDeviceDynamicRenderingFeatures.pNext = nullptr;
+	physicalDeviceDynamicRenderingFeatures.pNext = &physicalDeviceDescriptorIndexingFeatures;
 	physicalDeviceDynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 
 	VkPhysicalDeviceSynchronization2Features physicalDeviceSynchronization2Features = {};
 	physicalDeviceSynchronization2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
 	physicalDeviceSynchronization2Features.pNext = &physicalDeviceDynamicRenderingFeatures;
 	physicalDeviceSynchronization2Features.synchronization2 = VK_TRUE;
+
+	VkPhysicalDeviceFeatures physicalDeviceFeatures = {};
+	physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
 
 	VkDeviceCreateInfo deviceCreateInfo = {};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -231,10 +242,16 @@ void RenderingEngine::init() {
 	if (deviceExtensionAvailable("VK_KHR_synchronization2")) {
 		deviceExtensions.push_back("VK_KHR_synchronization2");
 	}
+	if (deviceExtensionAvailable("VK_KHR_maintenance3")) {
+		deviceExtensions.push_back("VK_KHR_maintenance3");
+	}
+	if (deviceExtensionAvailable("VK_EXT_descriptor_indexing")) {
+		deviceExtensions.push_back("VK_EXT_descriptor_indexing");
+	}
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-	deviceCreateInfo.pEnabledFeatures = nullptr;
+	deviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
 	TUTORIEL_VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
 
 	// Recuperation de la queue creee
@@ -272,10 +289,24 @@ void RenderingEngine::init() {
 	objectsDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	objectsDescriptorSetLayoutBinding.pImmutableSamplers = nullptr;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> descriptorSetLayoutBindings = { cameraDescriptorSetLayoutBinding, objectsDescriptorSetLayoutBinding };
+	VkDescriptorSetLayoutBinding texturesDescriptorSetLayoutBinding = {};
+	texturesDescriptorSetLayoutBinding.binding = 2;
+	texturesDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	texturesDescriptorSetLayoutBinding.descriptorCount = 524288;
+	texturesDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	texturesDescriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+
+	std::array<VkDescriptorBindingFlags, 3> descriptorBindingFlags = { 0, 0, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT };
+	VkDescriptorSetLayoutBindingFlagsCreateInfo descriptorSetLayoutBindingFlagsCreateInfo = {};
+	descriptorSetLayoutBindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+	descriptorSetLayoutBindingFlagsCreateInfo.pNext = nullptr;
+	descriptorSetLayoutBindingFlagsCreateInfo.bindingCount = static_cast<uint32_t>(descriptorBindingFlags.size());
+	descriptorSetLayoutBindingFlagsCreateInfo.pBindingFlags = descriptorBindingFlags.data();
+
+	std::array<VkDescriptorSetLayoutBinding, 3> descriptorSetLayoutBindings = { cameraDescriptorSetLayoutBinding, objectsDescriptorSetLayoutBinding, texturesDescriptorSetLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
 	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorSetLayoutCreateInfo.pNext = nullptr;
+	descriptorSetLayoutCreateInfo.pNext = &descriptorSetLayoutBindingFlagsCreateInfo;
 	descriptorSetLayoutCreateInfo.flags = 0;
 	descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(descriptorSetLayoutBindings.size());
 	descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
@@ -357,6 +388,31 @@ void RenderingEngine::init() {
 	// Creation d'un cube
 	createCube();
 
+	// Creation de l'echantillonneur de textures
+	VkSamplerCreateInfo textureSamplerCreateInfo = {};
+	textureSamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	textureSamplerCreateInfo.pNext = nullptr;
+	textureSamplerCreateInfo.flags = 0;
+	textureSamplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+	textureSamplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+	textureSamplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	textureSamplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	textureSamplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	textureSamplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	textureSamplerCreateInfo.mipLodBias = 0.0f;
+	textureSamplerCreateInfo.anisotropyEnable = VK_TRUE;
+	textureSamplerCreateInfo.maxAnisotropy = 16.0f;
+	textureSamplerCreateInfo.compareEnable = VK_FALSE;
+	textureSamplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
+	textureSamplerCreateInfo.minLod = 0.0f;
+	textureSamplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
+	textureSamplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	textureSamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+	TUTORIEL_VK_CHECK(vkCreateSampler(m_device, &textureSamplerCreateInfo, nullptr, &m_textureSampler));
+
+	// Creation d'une texture
+	createTexture();
+
 	// Creation des buffers de camera
 	m_cameraBuffers.resize(m_framesInFlight);
 	m_cameraBufferAllocations.resize(m_framesInFlight);
@@ -387,7 +443,7 @@ void RenderingEngine::init() {
 	objectsBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	objectsBufferCreateInfo.pNext = nullptr;
 	objectsBufferCreateInfo.flags = 0;
-	objectsBufferCreateInfo.size = sizeof(nml::mat4) * 2048;
+	objectsBufferCreateInfo.size = (sizeof(nml::mat4) + sizeof(nml::vec4)) * 2048;
 	objectsBufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	objectsBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	objectsBufferCreateInfo.queueFamilyIndexCount = 1;
@@ -410,7 +466,11 @@ void RenderingEngine::init() {
 	objectsDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	objectsDescriptorPoolSize.descriptorCount = 1;
 
-	std::array<VkDescriptorPoolSize, 2> descriptorPoolSizes = { cameraDescriptorPoolSize, objectsDescriptorPoolSize };
+	VkDescriptorPoolSize texturesDescriptorPoolSize = {};
+	texturesDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	texturesDescriptorPoolSize.descriptorCount = 524288;
+
+	std::array<VkDescriptorPoolSize, 3> descriptorPoolSizes = { cameraDescriptorPoolSize, objectsDescriptorPoolSize, texturesDescriptorPoolSize };
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
 	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolCreateInfo.pNext = nullptr;
@@ -459,7 +519,7 @@ void RenderingEngine::init() {
 
 		objectsDescriptorBufferInfo.buffer = m_objectsBuffers[i];
 		objectsDescriptorBufferInfo.offset = 0;
-		objectsDescriptorBufferInfo.range = sizeof(nml::mat4) * 2048;
+		objectsDescriptorBufferInfo.range = (sizeof(nml::mat4) + sizeof(nml::vec4)) * 2048;
 
 		VkWriteDescriptorSet objectsDescriptorWriteDescriptorSet = {};
 		objectsDescriptorWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -473,6 +533,26 @@ void RenderingEngine::init() {
 		objectsDescriptorWriteDescriptorSet.pBufferInfo = &objectsDescriptorBufferInfo;
 		objectsDescriptorWriteDescriptorSet.pTexelBufferView = nullptr;
 		writeDescriptorSets.push_back(objectsDescriptorWriteDescriptorSet);
+
+		texturesDescriptorImageInfos.resize(m_textureImages.size());
+		for (size_t j = 0; j < m_textureImages.size(); j++) {
+			texturesDescriptorImageInfos[j].sampler = m_textureSampler;
+			texturesDescriptorImageInfos[j].imageView = m_textureImageViews[j];
+			texturesDescriptorImageInfos[j].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		}
+
+		VkWriteDescriptorSet texturesDescriptorWriteDescriptorSet = {};
+		texturesDescriptorWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		texturesDescriptorWriteDescriptorSet.pNext = nullptr;
+		texturesDescriptorWriteDescriptorSet.dstSet = m_descriptorSets[i];
+		texturesDescriptorWriteDescriptorSet.dstBinding = 2;
+		texturesDescriptorWriteDescriptorSet.dstArrayElement = 0;
+		texturesDescriptorWriteDescriptorSet.descriptorCount = static_cast<uint32_t>(texturesDescriptorImageInfos.size());
+		texturesDescriptorWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		texturesDescriptorWriteDescriptorSet.pImageInfo = texturesDescriptorImageInfos.data();
+		texturesDescriptorWriteDescriptorSet.pBufferInfo = nullptr;
+		texturesDescriptorWriteDescriptorSet.pTexelBufferView = nullptr;
+		writeDescriptorSets.push_back(texturesDescriptorWriteDescriptorSet);
 
 		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 	}
@@ -518,9 +598,10 @@ void RenderingEngine::update() {
 	for (size_t i = 0; i < m_objects.size(); i++) {
 		nml::mat4 objectModel = nml::translate(m_objects[i].position) * nml::rotate(m_objects[i].rotation.x, nml::vec3(1.0f, 0.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.y, nml::vec3(0.0f, 1.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.z, nml::vec3(0.0f, 0.0f, 1.0f)) * nml::scale(m_objects[i].scale);
 
-		size_t offset = i * sizeof(nml::mat4);
+		size_t offset = (i * (sizeof(nml::mat4) + sizeof(nml::vec4)));
 
 		memcpy(reinterpret_cast<char*>(data) + offset, objectModel.data(), sizeof(nml::mat4));
+		memcpy(reinterpret_cast<char*>(data) + offset + sizeof(nml::mat4), &m_objects[i].textureIndex, sizeof(uint32_t));
 	}
 	vmaUnmapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight]);
 
@@ -721,6 +802,15 @@ void RenderingEngine::destroy() {
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
 		vmaDestroyBuffer(m_allocator, m_cameraBuffers[i], m_cameraBufferAllocations[i]);
 	}
+
+	// Destruction des images de textures et de leurs vues
+	for (size_t i = 0; i < m_textureImages.size(); i++) {
+		vkDestroyImageView(m_device, m_textureImageViews[i], nullptr);
+		vmaDestroyImage(m_allocator, m_textureImages[i], m_textureImageAllocations[i]);
+	}
+
+	// Destruction de l'echantillonneur
+	vkDestroySampler(m_device, m_textureSampler, nullptr);
 
 	// Destruction des vertex et index buffers
 	vmaDestroyBuffer(m_allocator, m_indexBuffer, m_indexBufferAllocation);
@@ -1798,24 +1888,31 @@ void RenderingEngine::createTexture() {
 	vmaUnmapMemory(m_allocator, textureStagingBufferAllocation);
 
 	// Copie du staging buffer et generation des mipmaps
-	VkCommandPool buffersCopyCommandPool;
+	VkCommandPool createTextureCommandPool;
 
-	VkCommandPoolCreateInfo buffersCopyCommandPoolCreateInfo = {};
-	buffersCopyCommandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	buffersCopyCommandPoolCreateInfo.pNext = nullptr;
-	buffersCopyCommandPoolCreateInfo.flags = 0;
-	buffersCopyCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &buffersCopyCommandPoolCreateInfo, nullptr, &buffersCopyCommandPool));
+	VkCommandPoolCreateInfo createTextureCommandPoolCreateInfo = {};
+	createTextureCommandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	createTextureCommandPoolCreateInfo.pNext = nullptr;
+	createTextureCommandPoolCreateInfo.flags = 0;
+	createTextureCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &createTextureCommandPoolCreateInfo, nullptr, &createTextureCommandPool));
 
-	VkCommandBuffer buffersCopyCommandBuffer;
+	VkCommandBuffer createTextureCommandBuffer;
 
-	VkCommandBufferAllocateInfo buffersCopyCommandBufferAllocateInfo = {};
-	buffersCopyCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	buffersCopyCommandBufferAllocateInfo.pNext = nullptr;
-	buffersCopyCommandBufferAllocateInfo.commandPool = buffersCopyCommandPool;
-	buffersCopyCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	buffersCopyCommandBufferAllocateInfo.commandBufferCount = 1;
-	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &buffersCopyCommandBufferAllocateInfo, &buffersCopyCommandBuffer));
+	VkCommandBufferAllocateInfo createTextureCommandBufferAllocateInfo = {};
+	createTextureCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	createTextureCommandBufferAllocateInfo.pNext = nullptr;
+	createTextureCommandBufferAllocateInfo.commandPool = createTextureCommandPool;
+	createTextureCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	createTextureCommandBufferAllocateInfo.commandBufferCount = 1;
+	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &createTextureCommandBufferAllocateInfo, &createTextureCommandBuffer));
+
+	VkCommandBufferBeginInfo createTextureCommandBufferBeginInfo = {};
+	createTextureCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	createTextureCommandBufferBeginInfo.pNext = nullptr;
+	createTextureCommandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	createTextureCommandBufferBeginInfo.pInheritanceInfo = nullptr;
+	vkBeginCommandBuffer(createTextureCommandBuffer, &createTextureCommandBufferBeginInfo);
 
 	VkImageMemoryBarrier2 undefinedToTransferDstOptimalImageMemoryBarrier = {};
 	undefinedToTransferDstOptimalImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -1845,7 +1942,7 @@ void RenderingEngine::createTexture() {
 	undefinedToTransferDstOptimalDependencyInfo.pBufferMemoryBarriers = nullptr;
 	undefinedToTransferDstOptimalDependencyInfo.imageMemoryBarrierCount = 1;
 	undefinedToTransferDstOptimalDependencyInfo.pImageMemoryBarriers = &undefinedToTransferDstOptimalImageMemoryBarrier;
-	m_vkCmdPipelineBarrier2KHR(buffersCopyCommandBuffer, &undefinedToTransferDstOptimalDependencyInfo);
+	m_vkCmdPipelineBarrier2KHR(createTextureCommandBuffer, &undefinedToTransferDstOptimalDependencyInfo);
 
 	VkBufferImageCopy textureBufferCopy = {};
 	textureBufferCopy.bufferOffset = 0;
@@ -1861,7 +1958,7 @@ void RenderingEngine::createTexture() {
 	textureBufferCopy.imageExtent.width = 16;
 	textureBufferCopy.imageExtent.height = 16;
 	textureBufferCopy.imageExtent.depth = 1;
-	vkCmdCopyBufferToImage(buffersCopyCommandBuffer, textureStagingBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &textureBufferCopy);
+	vkCmdCopyBufferToImage(createTextureCommandBuffer, textureStagingBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &textureBufferCopy);
 
 	VkImageMemoryBarrier2 mipMapGenerationImageMemoryBarrier = {};
 	mipMapGenerationImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -1895,7 +1992,7 @@ void RenderingEngine::createTexture() {
 		mipMapGenerationDependencyInfo.pBufferMemoryBarriers = nullptr;
 		mipMapGenerationDependencyInfo.imageMemoryBarrierCount = 1;
 		mipMapGenerationDependencyInfo.pImageMemoryBarriers = &mipMapGenerationImageMemoryBarrier;
-		m_vkCmdPipelineBarrier2KHR(buffersCopyCommandBuffer, &mipMapGenerationDependencyInfo);
+		m_vkCmdPipelineBarrier2KHR(createTextureCommandBuffer, &mipMapGenerationDependencyInfo);
 
 		VkImageBlit imageBlit = {};
 		imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1918,7 +2015,7 @@ void RenderingEngine::createTexture() {
 		imageBlit.dstOffsets[1].x = mipWidth > 1 ? mipWidth / 2 : 1;
 		imageBlit.dstOffsets[1].y = mipHeight > 1 ? mipHeight / 2 : 1;
 		imageBlit.dstOffsets[1].z = 1;
-		vkCmdBlitImage(buffersCopyCommandBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_LINEAR);
+		vkCmdBlitImage(createTextureCommandBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_LINEAR);
 
 		mipMapGenerationImageMemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
 		mipMapGenerationImageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -1928,13 +2025,13 @@ void RenderingEngine::createTexture() {
 		mipMapGenerationImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		mipMapGenerationDependencyInfo.pImageMemoryBarriers = &mipMapGenerationImageMemoryBarrier;
-		m_vkCmdPipelineBarrier2KHR(buffersCopyCommandBuffer, &mipMapGenerationDependencyInfo);
+		m_vkCmdPipelineBarrier2KHR(createTextureCommandBuffer, &mipMapGenerationDependencyInfo);
 
 		mipWidth = mipWidth > 1 ? mipWidth / 2 : 1;
 		mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
 	}
 
-	vkEndCommandBuffer(buffersCopyCommandBuffer);
+	vkEndCommandBuffer(createTextureCommandBuffer);
 
 	VkFence buffersCopyFence;
 
@@ -1951,15 +2048,19 @@ void RenderingEngine::createTexture() {
 	buffersCopySubmitInfo.pWaitSemaphores = nullptr;
 	buffersCopySubmitInfo.pWaitDstStageMask = nullptr;
 	buffersCopySubmitInfo.commandBufferCount = 1;
-	buffersCopySubmitInfo.pCommandBuffers = &buffersCopyCommandBuffer;
+	buffersCopySubmitInfo.pCommandBuffers = &createTextureCommandBuffer;
 	buffersCopySubmitInfo.signalSemaphoreCount = 0;
 	buffersCopySubmitInfo.pSignalSemaphores = nullptr;
 	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &buffersCopySubmitInfo, buffersCopyFence));
 	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &buffersCopyFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
 
 	vkDestroyFence(m_device, buffersCopyFence, nullptr);
-	vkDestroyCommandPool(m_device, buffersCopyCommandPool, nullptr);
+	vkDestroyCommandPool(m_device, createTextureCommandPool, nullptr);
 	vmaDestroyBuffer(m_allocator, textureStagingBuffer, textureStagingBufferAllocation);
+
+	m_textureImages.push_back(textureImage);
+	m_textureImageAllocations.push_back(textureImageAllocation);
+	m_textureImageViews.push_back(textureImageView);
 }
 
 void RenderingEngine::createScene() {
@@ -1972,18 +2073,20 @@ void RenderingEngine::createScene() {
 	cubeObject.scale = nml::vec3(1.0f, 1.0f, 1.0f); // Pas de mise à l'échelle
 
 	cubeObject.meshIndex = 0; // Maillage 0 = Cube
+	cubeObject.textureIndex = 0; // Texture 0
 
 	m_objects.push_back(cubeObject);
 
 	Object cubeObject2;
 
-	cubeObject2.index = m_objectIndex++; // Indice 0
+	cubeObject2.index = m_objectIndex++; // Indice 1
 
-	cubeObject2.position = nml::vec3(0.0f, 0.0f, 2.0f); // Milieu du monde
-	cubeObject2.rotation = nml::vec3(0.0f, 0.0f, 0.0f); // Pas de rotation
-	cubeObject2.scale = nml::vec3(1.0f, 1.0f, 1.0f); // Pas de mise à l'échelle
+	cubeObject2.position = nml::vec3(0.0f, 0.0f, 2.0f);
+	cubeObject2.rotation = nml::vec3(0.0f, 0.0f, 0.0f);
+	cubeObject2.scale = nml::vec3(1.0f, 1.0f, 1.0f);
 
 	cubeObject2.meshIndex = 0; // Maillage 0 = Cube
+	cubeObject2.textureIndex = 0; // Texture 0
 
 	m_objects.push_back(cubeObject2);
 }
