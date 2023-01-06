@@ -8,6 +8,8 @@
 #include "../external/glslang/glslang/Include/ShHandle.h"
 #include "../external/glslang/SPIRV/GlslangToSpv.h"
 #include "../external/glslang/StandAlone/DirStackFileIncluder.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "../external/stb/stb_image.h"
 #include <array>
 #include <fstream>
 #include <limits>
@@ -409,9 +411,6 @@ void RenderingEngine::init() {
 	textureSamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 	TUTORIEL_VK_CHECK(vkCreateSampler(m_device, &textureSamplerCreateInfo, nullptr, &m_textureSampler));
 
-	// Creation d'une texture
-	createTexture();
-
 	// Creation des buffers de camera
 	m_cameraBuffers.resize(m_framesInFlight);
 	m_cameraBufferAllocations.resize(m_framesInFlight);
@@ -455,6 +454,9 @@ void RenderingEngine::init() {
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
 		vmaCreateBuffer(m_allocator, &objectsBufferCreateInfo, &objectsBufferAllocationCreateInfo, &m_objectsBuffers[i], &m_objectsBufferAllocations[i], nullptr);
 	}
+
+	// Creation de la scene
+	createScene();
 
 	// Creation du descriptor pool
 	VkDescriptorPoolSize cameraDescriptorPoolSize = {};
@@ -558,9 +560,6 @@ void RenderingEngine::init() {
 
 	// Creation de l'image de profondeur
 	createDepthImage();
-
-	// Creation de la scene
-	createScene();
 }
 
 void RenderingEngine::update() {
@@ -1641,7 +1640,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 
 	// Ouverture du fichier
 	if (!file.is_open()) {
-		std::cout << "Impossible d'ouvrir le fichier de modele \"" + modelFilePath + "." << std::endl;
+		std::cout << "Impossible d'ouvrir le fichier de modele \"" + modelFilePath + "\"." << std::endl;
 		exit(1);
 	}
 
@@ -1827,7 +1826,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	vkCmdCopyBuffer(buffersCopyCommandBuffer, vertexAndIndexStagingBuffer, m_vertexBuffer, 1, &vertexBufferCopy);
 
 	VkBufferCopy indexBufferCopy = {};
-	indexBufferCopy.srcOffset = (vertices.size() * sizeof(Vertex));
+	indexBufferCopy.srcOffset = vertices.size() * sizeof(Vertex);
 	indexBufferCopy.dstOffset = m_currentIndexOffset * sizeof(uint32_t);
 	indexBufferCopy.size = indices.size() * sizeof(uint32_t);
 	vkCmdCopyBuffer(buffersCopyCommandBuffer, vertexAndIndexStagingBuffer, m_indexBuffer, 1, &indexBufferCopy);
@@ -1871,15 +1870,18 @@ uint32_t RenderingEngine::findMipLevels(uint32_t width, uint32_t height) {
 	return static_cast<uint32_t>(std::floor(std::log2(std::min(width, height)) + 1));
 }
 
-void RenderingEngine::createTexture() {
-	std::array<unsigned char, 16 * 16 * 4> textureData;
-	for (size_t i = 0; i < 256; i++) {
-		textureData[i * 4] = static_cast<unsigned char>(255 - i); // Rouge
-		textureData[i * 4 + 1] = static_cast<unsigned char>(i % 128); // Vert
-		textureData[i * 4 + 2] = static_cast<unsigned char>(i); // Bleu
-		textureData[i * 4 + 3] = static_cast<unsigned char>(255); // Alpha
+uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
+	int width;
+	int height;
+	int texChannels;
+
+	stbi_uc* pixels = stbi_load(textureFilePath.c_str(), &width, &height, &texChannels, STBI_rgb_alpha);
+	if (!pixels) {
+		std::cout << "Une erreur a eu lieu lors de la lecture de l\'image \"" + textureFilePath + "\"." << std::endl;
+		exit(1);
 	}
 
+	// Creation de l'image de la texture
 	VkImage textureImage;
 	VmaAllocation textureImageAllocation;
 
@@ -1889,8 +1891,8 @@ void RenderingEngine::createTexture() {
 	textureImageCreateInfo.flags = 0;
 	textureImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 	textureImageCreateInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-	textureImageCreateInfo.extent.width = 16;
-	textureImageCreateInfo.extent.height = 16;
+	textureImageCreateInfo.extent.width = static_cast<uint32_t>(width);
+	textureImageCreateInfo.extent.height = static_cast<uint32_t>(height);
 	textureImageCreateInfo.extent.depth = 1;
 	textureImageCreateInfo.mipLevels = findMipLevels(textureImageCreateInfo.extent.width, textureImageCreateInfo.extent.height);
 	textureImageCreateInfo.arrayLayers = 1;
@@ -1907,6 +1909,7 @@ void RenderingEngine::createTexture() {
 
 	TUTORIEL_VK_CHECK(vmaCreateImage(m_allocator, &textureImageCreateInfo, &textureImageAllocationCreateInfo, &textureImage, &textureImageAllocation, nullptr));
 
+	// Creation de la vue de l'image de la texture
 	VkImageView textureImageView;
 
 	VkImageViewCreateInfo textureImageViewCreateInfo = {};
@@ -1927,7 +1930,7 @@ void RenderingEngine::createTexture() {
 	textureImageViewCreateInfo.subresourceRange.layerCount = 1;
 	TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &textureImageViewCreateInfo, nullptr, &textureImageView));
 
-	// Staging buffer
+	// Creation du staging buffer
 	VkBuffer textureStagingBuffer;
 	VmaAllocation textureStagingBufferAllocation;
 
@@ -1935,7 +1938,7 @@ void RenderingEngine::createTexture() {
 	textureStagingBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	textureStagingBufferCreateInfo.pNext = nullptr;
 	textureStagingBufferCreateInfo.flags = 0;
-	textureStagingBufferCreateInfo.size = 16 * 16 * 4;
+	textureStagingBufferCreateInfo.size = static_cast<size_t>(width) * static_cast<size_t>(width) * 4;
 	textureStagingBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	textureStagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	textureStagingBufferCreateInfo.queueFamilyIndexCount = 1;
@@ -1948,8 +1951,10 @@ void RenderingEngine::createTexture() {
 
 	void* data;
 	TUTORIEL_VK_CHECK(vmaMapMemory(m_allocator, textureStagingBufferAllocation, &data));
-	memcpy(data, textureData.data(), 16 * 16 * 4);
+	memcpy(data, pixels, static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
 	vmaUnmapMemory(m_allocator, textureStagingBufferAllocation);
+
+	stbi_image_free(pixels);
 
 	// Copie du staging buffer et generation des mipmaps
 	VkCommandPool createTextureCommandPool;
@@ -2019,8 +2024,8 @@ void RenderingEngine::createTexture() {
 	textureBufferCopy.imageOffset.x = 0;
 	textureBufferCopy.imageOffset.y = 0;
 	textureBufferCopy.imageOffset.z = 0;
-	textureBufferCopy.imageExtent.width = 16;
-	textureBufferCopy.imageExtent.height = 16;
+	textureBufferCopy.imageExtent.width = static_cast<uint32_t>(width);
+	textureBufferCopy.imageExtent.height = static_cast<uint32_t>(height);
 	textureBufferCopy.imageExtent.depth = 1;
 	vkCmdCopyBufferToImage(createTextureCommandBuffer, textureStagingBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &textureBufferCopy);
 
@@ -2125,11 +2130,16 @@ void RenderingEngine::createTexture() {
 	m_textureImages.push_back(textureImage);
 	m_textureImageAllocations.push_back(textureImageAllocation);
 	m_textureImageViews.push_back(textureImageView);
+
+	return static_cast<uint32_t>(m_textureImages.size() - 1);
 }
 
 void RenderingEngine::createScene() {
 	uint32_t cubeMesh = loadModel("../models/cube.obj");
 	uint32_t sphereMesh = loadModel("../models/sphere.obj");
+
+	uint32_t dustTexture = loadTexture("../models/dust.jpg");
+	uint32_t groundTexture = loadTexture("../models/ground.jpg");
 
 	Object object1;
 
@@ -2140,7 +2150,7 @@ void RenderingEngine::createScene() {
 	object1.scale = nml::vec3(1.0f, 1.0f, 1.0f);
 
 	object1.meshIndex = cubeMesh;
-	object1.textureIndex = 0;
+	object1.textureIndex = groundTexture;
 
 	m_objects.push_back(object1);
 
@@ -2153,7 +2163,7 @@ void RenderingEngine::createScene() {
 	object2.scale = nml::vec3(1.0f, 1.0f, 1.0f);
 
 	object2.meshIndex = sphereMesh;
-	object2.textureIndex = 0;
+	object2.textureIndex = dustTexture;
 
 	m_objects.push_back(object2);
 }

@@ -76,7 +76,7 @@ private:
 	uint32_t loadModel(const std::string& modelFilePath);
 
 	uint32_t findMipLevels(uint32_t width, uint32_t height);
-	void createTexture();
+	uint32_t loadTexture(const std::string& textureFilePath);
 
 	void createScene();
 
