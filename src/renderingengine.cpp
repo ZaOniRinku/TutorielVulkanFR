@@ -455,6 +455,9 @@ void RenderingEngine::init() {
 		vmaCreateBuffer(m_allocator, &objectsBufferCreateInfo, &objectsBufferAllocationCreateInfo, &m_objectsBuffers[i], &m_objectsBufferAllocations[i], nullptr);
 	}
 
+	// Chargement d'une texture qui assure que le binding ne sera pas vide
+	loadTexture("../models/no_texture.jpg");
+
 	// Creation de la scene
 	createScene();
 

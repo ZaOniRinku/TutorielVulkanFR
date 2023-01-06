@@ -48,7 +48,7 @@ struct Object {
 	nml::vec3 scale;
 
 	size_t meshIndex;
-	uint32_t textureIndex;
+	uint32_t textureIndex = 0;
 };
 
 class RenderingEngine {
