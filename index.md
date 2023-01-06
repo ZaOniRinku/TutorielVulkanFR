@@ -33,3 +33,4 @@
 - [2.5 - Dessiner des maillages](partie2/5.md)
 - [2.6 - Image de profondeur](partie2/6.md)
 - [2.7 - Utilisation de textures](partie2/7.md)
+- [2.8 - Chargement de maillages et textures depuis des fichiers](partie2/8.md)
