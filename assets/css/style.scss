@@ -9,9 +9,12 @@ body {
 }
 
 .markdown-body .highlight pre, .markdown-body pre {
-	background-color: #262626;
-	white-space: normal;
+	background-color: #2b2b2b;
 	line-break: anywhere;
+}
+
+.markdown-body pre code, .markdown-body pre tt {
+	white-space: break-spaces;
 }
 
 .markdown-body img {
@@ -23,6 +26,38 @@ body {
 
 .markdown-body code {
 	background-color: rgba(255, 255, 255, 0.08);
+}
+
+.highlight .k, .highlight .kv {
+	color: #acacac;
+}
+
+.highlight .kt {
+	color: #7a95e8;
+}
+
+.highlight .mi {
+	color: #06bfbf;
+}
+
+.highlight .nb {
+	color: #19B1E3;
+}
+
+.highlight .nc {
+	color: #7a95e8;
+}
+
+.highlight .nf {
+	color: #f25f5f;
+}
+
+.highlight .nt {
+	color: #8b8bfd;
+}
+
+.highlight .o {
+	color: #acacac;
 }
 
 .text-gray {
