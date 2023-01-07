@@ -384,10 +384,10 @@ void RenderingEngine::init() {
 	VmaAllocationCreateInfo vertexAndIndexBufferAllocationCreateInfo = {};
 	vertexAndIndexBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-	vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_vertexBuffer, &m_vertexBufferAllocation, nullptr);
+	VK_CHECK(vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_vertexBuffer, &m_vertexBufferAllocation, nullptr));
 
 	vertexAndIndexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_indexBuffer, &m_indexBufferAllocation, nullptr);
+	VK_CHECK(vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_indexBuffer, &m_indexBufferAllocation, nullptr));
 
 	// Creation de l'echantillonneur de textures
 	VkSamplerCreateInfo textureSamplerCreateInfo = {};
@@ -430,7 +430,7 @@ void RenderingEngine::init() {
 	cameraBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
-		vmaCreateBuffer(m_allocator, &cameraBufferCreateInfo, &cameraBufferAllocationCreateInfo, &m_cameraBuffers[i], &m_cameraBufferAllocations[i], nullptr);
+		VK_CHECK(vmaCreateBuffer(m_allocator, &cameraBufferCreateInfo, &cameraBufferAllocationCreateInfo, &m_cameraBuffers[i], &m_cameraBufferAllocations[i], nullptr));
 	}
 
 	// Creation des buffers d'objets
@@ -452,7 +452,7 @@ void RenderingEngine::init() {
 	objectsBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
-		vmaCreateBuffer(m_allocator, &objectsBufferCreateInfo, &objectsBufferAllocationCreateInfo, &m_objectsBuffers[i], &m_objectsBufferAllocations[i], nullptr);
+		VK_CHECK(vmaCreateBuffer(m_allocator, &objectsBufferCreateInfo, &objectsBufferAllocationCreateInfo, &m_objectsBuffers[i], &m_objectsBufferAllocations[i], nullptr));
 	}
 
 	// Chargement d'une texture qui assure que le binding ne sera pas vide
@@ -590,12 +590,12 @@ void RenderingEngine::update() {
 	std::array<nml::mat4, 2> cameraMatrices{ cameraView, cameraProjection };
 
 	void* data;
-	vmaMapMemory(m_allocator, m_cameraBufferAllocations[m_currentFrameInFlight], &data);
+	VK_CHECK(vmaMapMemory(m_allocator, m_cameraBufferAllocations[m_currentFrameInFlight], &data));
 	memcpy(data, cameraMatrices.data(), sizeof(nml::mat4) * 2);
 	vmaUnmapMemory(m_allocator, m_cameraBufferAllocations[m_currentFrameInFlight]);
 
 	// Mise à jour des buffers des objets
-	vmaMapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight], &data);
+	VK_CHECK(vmaMapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight], &data));
 	for (size_t i = 0; i < m_objects.size(); i++) {
 		nml::mat4 objectModel = nml::translate(m_objects[i].position) * nml::rotate(m_objects[i].rotation.x, nml::vec3(1.0f, 0.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.y, nml::vec3(0.0f, 1.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.z, nml::vec3(0.0f, 0.0f, 1.0f)) * nml::scale(m_objects[i].scale);
 
