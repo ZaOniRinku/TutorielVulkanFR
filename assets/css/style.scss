@@ -28,6 +28,10 @@ body {
 	background-color: rgba(255, 255, 255, 0.08);
 }
 
+.highlight .c1 {
+	color: #62b950;
+}
+
 .highlight .k, .highlight .kv {
 	color: #acacac;
 }
@@ -54,6 +58,10 @@ body {
 
 .highlight .nt {
 	color: #8b8bfd;
+}
+
+.highlight .nv {
+	color: #09c8c8;
 }
 
 .highlight .o {
