@@ -11,7 +11,7 @@
 #include <vector>
 #include <string>
 
-#define TUTORIEL_VK_CHECK(f) \
+#define VK_CHECK(f) \
 	do { \
 		int64_t check = f; \
 		if (check) { \

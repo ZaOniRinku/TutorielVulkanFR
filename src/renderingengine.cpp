@@ -64,7 +64,7 @@ void RenderingEngine::init() {
 #endif
 	instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
 	instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
-	TUTORIEL_VK_CHECK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance));
+	VK_CHECK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance));
 
 	// Creation du messager de debug
 	VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {};
@@ -80,7 +80,7 @@ void RenderingEngine::init() {
 	debugMessengerCreateInfo.pUserData = nullptr;
 
 	auto createDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
-	TUTORIEL_VK_CHECK(createDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &m_debugMessenger));
+	VK_CHECK(createDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &m_debugMessenger));
 
 	// Creation de la fenetre
 	if (!glfwInit()) {
@@ -100,7 +100,7 @@ void RenderingEngine::init() {
 	surfaceCreateInfo.hwnd = handle;
 
 	auto createWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR");
-	TUTORIEL_VK_CHECK(createWin32SurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
+	VK_CHECK(createWin32SurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
 #elif defined(TUTORIEL_VK_OS_LINUX)
 	m_display = XOpenDisplay(NULL);
 	Window handle = glfwGetX11Window(m_window);
@@ -112,7 +112,7 @@ void RenderingEngine::init() {
 	surfaceCreateInfo.window = handle;
 
 	auto createXlibSurfaceKHR = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkCreateXlibSurfaceKHR");
-	TUTORIEL_VK_CHECK(createXlibSurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
+	VK_CHECK(createXlibSurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
 #endif
 
 	// Selection du GPU
@@ -256,7 +256,7 @@ void RenderingEngine::init() {
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
 	deviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
-	TUTORIEL_VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
+	VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
 
 	// Recuperation de la queue creee
 	vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
@@ -273,7 +273,7 @@ void RenderingEngine::init() {
 	vmaAllocatorCreateInfo.pVulkanFunctions = nullptr;
 	vmaAllocatorCreateInfo.instance = m_instance;
 	vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_1;
-	TUTORIEL_VK_CHECK(vmaCreateAllocator(&vmaAllocatorCreateInfo, &m_allocator));
+	VK_CHECK(vmaCreateAllocator(&vmaAllocatorCreateInfo, &m_allocator));
 
 	// Creation de la swapchain
 	createSwapchain(VK_NULL_HANDLE);
@@ -314,7 +314,7 @@ void RenderingEngine::init() {
 	descriptorSetLayoutCreateInfo.flags = 0;
 	descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(descriptorSetLayoutBindings.size());
 	descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
-	TUTORIEL_VK_CHECK(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout));
+	VK_CHECK(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout));
 
 	// Creation du pipeline graphique
 	createGraphicsPipeline();
@@ -336,10 +336,10 @@ void RenderingEngine::init() {
 	commandBufferAllocateInfo.commandBufferCount = 1;
 
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
-		TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_renderingCommandPools[i]));
+		VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_renderingCommandPools[i]));
 
 		commandBufferAllocateInfo.commandPool = m_renderingCommandPools[i];
-		TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_renderingCommandBuffers[i]));
+		VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_renderingCommandBuffers[i]));
 	}
 
 	// Creation des objets de synchronisation
@@ -358,11 +358,11 @@ void RenderingEngine::init() {
 	semaphoreCreateInfo.flags = 0;
 
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
-		TUTORIEL_VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_fences[i]));
-		TUTORIEL_VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_acquireCompletedSemaphores[i]));
+		VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_fences[i]));
+		VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_acquireCompletedSemaphores[i]));
 	}
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
-		TUTORIEL_VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_renderCompletedSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_renderCompletedSemaphores[i]));
 	}
 
 	// Chargement de fonctions utilisees lors de l'enregistrement des commandes
@@ -409,7 +409,7 @@ void RenderingEngine::init() {
 	textureSamplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
 	textureSamplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	textureSamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-	TUTORIEL_VK_CHECK(vkCreateSampler(m_device, &textureSamplerCreateInfo, nullptr, &m_textureSampler));
+	VK_CHECK(vkCreateSampler(m_device, &textureSamplerCreateInfo, nullptr, &m_textureSampler));
 
 	// Creation des buffers de camera
 	m_cameraBuffers.resize(m_framesInFlight);
@@ -482,7 +482,7 @@ void RenderingEngine::init() {
 	descriptorPoolCreateInfo.maxSets = m_framesInFlight;
 	descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
 	descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
-	TUTORIEL_VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolCreateInfo, nullptr, &m_descriptorPool));
+	VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolCreateInfo, nullptr, &m_descriptorPool));
 
 	// Allocation des descriptor sets
 	m_descriptorSets.resize(m_framesInFlight);
@@ -494,7 +494,7 @@ void RenderingEngine::init() {
 	descriptorSetAllocateInfo.pSetLayouts = &m_descriptorSetLayout;
 
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
-		TUTORIEL_VK_CHECK(vkAllocateDescriptorSets(m_device, &descriptorSetAllocateInfo, &m_descriptorSets[i]));
+		VK_CHECK(vkAllocateDescriptorSets(m_device, &descriptorSetAllocateInfo, &m_descriptorSets[i]));
 	}
 
 	// Mise a jour des descriptor sets
@@ -569,7 +569,7 @@ void RenderingEngine::update() {
 	// Recuperation des evenements sur les fenetres
 	glfwPollEvents();
 
-	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &m_fences[m_currentFrameInFlight], VK_TRUE, std::numeric_limits<uint64_t>::max()));
+	VK_CHECK(vkWaitForFences(m_device, 1, &m_fences[m_currentFrameInFlight], VK_TRUE, std::numeric_limits<uint64_t>::max()));
 
 	// Recuperation d'un indice d'une image libre de la swapchain
 	uint32_t imageIndex;
@@ -607,14 +607,14 @@ void RenderingEngine::update() {
 	vmaUnmapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight]);
 
 	// Reinitialisation du command buffer alloue avec le command pool
-	TUTORIEL_VK_CHECK(vkResetCommandPool(m_device, m_renderingCommandPools[m_currentFrameInFlight], 0));
+	VK_CHECK(vkResetCommandPool(m_device, m_renderingCommandPools[m_currentFrameInFlight], 0));
 
 	// Debut de l'enregistrement du command buffer
 	VkCommandBufferBeginInfo commandBufferBeginInfo = {};
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	commandBufferBeginInfo.pNext = nullptr;
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	TUTORIEL_VK_CHECK(vkBeginCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight], &commandBufferBeginInfo));
+	VK_CHECK(vkBeginCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight], &commandBufferBeginInfo));
 
 	// Transition de layout VK_IMAGE_LAYOUT_UNDEFINED -> VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	VkImageMemoryBarrier2 undefinedToColorAttachmentOptimalImageMemoryBarrier = {};
@@ -745,10 +745,10 @@ void RenderingEngine::update() {
 	m_vkCmdPipelineBarrier2KHR(m_renderingCommandBuffers[m_currentFrameInFlight], &colorAttachmentOptimalToPresentSrcDependencyInfo);
 
 	// Fin de l'enregistrement du command buffer
-	TUTORIEL_VK_CHECK(vkEndCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight]));
+	VK_CHECK(vkEndCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight]));
 
 	// De-signalement de la fence
-	TUTORIEL_VK_CHECK(vkResetFences(m_device, 1, &m_fences[m_currentFrameInFlight]));
+	VK_CHECK(vkResetFences(m_device, 1, &m_fences[m_currentFrameInFlight]));
 
 	// Soumission des commandes a la queue du GPU
 	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -762,7 +762,7 @@ void RenderingEngine::update() {
 	submitInfo.pCommandBuffers = &m_renderingCommandBuffers[m_currentFrameInFlight];
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &m_renderCompletedSemaphores[imageIndex];
-	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_fences[m_currentFrameInFlight]));
+	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_fences[m_currentFrameInFlight]));
 
 	// Presentation de l'image de la swapchain a l'ecran
 	VkPresentInfoKHR presentInfo = {};
@@ -789,7 +789,7 @@ void RenderingEngine::update() {
 
 void RenderingEngine::destroy() {
 	// Attente que la queue du GPU ne soit plus utilisee
-	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+	VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
 
 	// Destruction du descriptor pool
 	vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
@@ -884,9 +884,9 @@ bool RenderingEngine::shouldClose() {
 
 bool RenderingEngine::explicitLayerAvailable(const char* layerName) {
 	uint32_t instanceLayerPropertyCount;
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, nullptr));
+	VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, nullptr));
 	std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerPropertyCount);
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, instanceLayerProperties.data()));
+	VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, instanceLayerProperties.data()));
 
 	for (const VkLayerProperties& availableLayer : instanceLayerProperties) {
 		if (strcmp(availableLayer.layerName, layerName) == 0) {
@@ -900,9 +900,9 @@ bool RenderingEngine::explicitLayerAvailable(const char* layerName) {
 
 bool RenderingEngine::instanceExtensionAvailable(const char* extensionName) {
 	uint32_t instanceExtensionPropertyCount;
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, nullptr));
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, nullptr));
 	std::vector<VkExtensionProperties> instanceExtensionProperties(instanceExtensionPropertyCount);
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, instanceExtensionProperties.data()));
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, instanceExtensionProperties.data()));
 
 	for (const VkExtensionProperties& availableExtension : instanceExtensionProperties) {
 		if (strcmp(availableExtension.extensionName, extensionName) == 0) {
@@ -916,9 +916,9 @@ bool RenderingEngine::instanceExtensionAvailable(const char* extensionName) {
 
 bool RenderingEngine::deviceExtensionAvailable(const char* extensionName) {
 	uint32_t deviceExtensionPropertyCount;
-	TUTORIEL_VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, nullptr));
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, nullptr));
 	std::vector<VkExtensionProperties> deviceExtensionProperties(deviceExtensionPropertyCount);
-	TUTORIEL_VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, deviceExtensionProperties.data()));
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, deviceExtensionProperties.data()));
 
 	for (const VkExtensionProperties& availableExtension : deviceExtensionProperties) {
 		if (strcmp(availableExtension.extensionName, extensionName) == 0) {
@@ -946,7 +946,7 @@ void RenderingEngine::createGraphicsPipeline() {
 	vertexShaderModuleCreateInfo.flags = 0;
 	vertexShaderModuleCreateInfo.codeSize = vertexShaderSpv.size() * sizeof(uint32_t);
 	vertexShaderModuleCreateInfo.pCode = vertexShaderSpv.data();
-	TUTORIEL_VK_CHECK(vkCreateShaderModule(m_device, &vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule));
+	VK_CHECK(vkCreateShaderModule(m_device, &vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule));
 
 	VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo = {};
 	vertexShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -964,7 +964,7 @@ void RenderingEngine::createGraphicsPipeline() {
 	fragmentShaderModuleCreateInfo.flags = 0;
 	fragmentShaderModuleCreateInfo.codeSize = fragmentShaderSpv.size() * sizeof(uint32_t);
 	fragmentShaderModuleCreateInfo.pCode = fragmentShaderSpv.data();
-	TUTORIEL_VK_CHECK(vkCreateShaderModule(m_device, &fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule));
+	VK_CHECK(vkCreateShaderModule(m_device, &fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule));
 
 	VkPipelineShaderStageCreateInfo fragmentShaderStageCreateInfo = {};
 	fragmentShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1129,7 +1129,7 @@ void RenderingEngine::createGraphicsPipeline() {
 	pipelineLayoutCreateInfo.pSetLayouts = &m_descriptorSetLayout;
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 	pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-	TUTORIEL_VK_CHECK(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_graphicsPipelineLayout));
+	VK_CHECK(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_graphicsPipelineLayout));
 
 	// Creation du pipeline graphique
 	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {};
@@ -1152,7 +1152,7 @@ void RenderingEngine::createGraphicsPipeline() {
 	graphicsPipelineCreateInfo.subpass = 0;
 	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	graphicsPipelineCreateInfo.basePipelineIndex = 0;
-	TUTORIEL_VK_CHECK(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_graphicsPipeline));
+	VK_CHECK(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_graphicsPipeline));
 
 	// Destruction des modules de shaders
 	vkDestroyShaderModule(m_device, fragmentShaderModule, nullptr);
@@ -1442,11 +1442,11 @@ void RenderingEngine::createSwapchain(VkSwapchainKHR oldSwapchain) {
 	swapchainCreateInfo.presentMode = swapchainPresentMode;
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.oldSwapchain = oldSwapchain;
-	TUTORIEL_VK_CHECK(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain));
+	VK_CHECK(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain));
 
-	TUTORIEL_VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, nullptr));
+	VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, nullptr));
 	m_swapchainImages.resize(m_swapchainImageCount);
-	TUTORIEL_VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, m_swapchainImages.data()));
+	VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, m_swapchainImages.data()));
 
 	// Le nombre de frames-in-flight ne doit pas etre superieur au nombre d'images dans la swapchain
 	if (m_framesInFlight > m_swapchainImageCount) {
@@ -1471,13 +1471,13 @@ void RenderingEngine::createSwapchain(VkSwapchainKHR oldSwapchain) {
 		swapchainImageViewCreateInfo.subresourceRange.levelCount = 1;
 		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1;
-		TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
+		VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
 	}
 }
 
 void RenderingEngine::onResize() {
 	// Attente que la swapchain soit libre
-	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+	VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
 
 	int windowWidth;
 	int windowHeight;
@@ -1531,7 +1531,7 @@ void RenderingEngine::createDepthImage() {
 	VmaAllocationCreateInfo depthImageAllocationCreateInfo = {};
 	depthImageAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-	TUTORIEL_VK_CHECK(vmaCreateImage(m_allocator, &depthImageCreateInfo, &depthImageAllocationCreateInfo, &m_depthImage, &m_depthImageAllocation, nullptr));
+	VK_CHECK(vmaCreateImage(m_allocator, &depthImageCreateInfo, &depthImageAllocationCreateInfo, &m_depthImage, &m_depthImageAllocation, nullptr));
 
 	VkImageViewCreateInfo depthImageViewCreateInfo = {};
 	depthImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1549,7 +1549,7 @@ void RenderingEngine::createDepthImage() {
 	depthImageViewCreateInfo.subresourceRange.levelCount = 1;
 	depthImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 	depthImageViewCreateInfo.subresourceRange.layerCount = 1;
-	TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &depthImageViewCreateInfo, nullptr, &m_depthImageView));
+	VK_CHECK(vkCreateImageView(m_device, &depthImageViewCreateInfo, nullptr, &m_depthImageView));
 
 	// Transition de layout VK_IMAGE_LAYOUT_UNDEFINED -> VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 	VkCommandPool depthImageTransitionCommandPool;
@@ -1559,7 +1559,7 @@ void RenderingEngine::createDepthImage() {
 	depthImageTransitionCommandPoolCreateInfo.pNext = nullptr;
 	depthImageTransitionCommandPoolCreateInfo.flags = 0;
 	depthImageTransitionCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &depthImageTransitionCommandPoolCreateInfo, nullptr, &depthImageTransitionCommandPool));
+	VK_CHECK(vkCreateCommandPool(m_device, &depthImageTransitionCommandPoolCreateInfo, nullptr, &depthImageTransitionCommandPool));
 
 	VkCommandBuffer depthImageTransitionCommandBuffer;
 
@@ -1569,7 +1569,7 @@ void RenderingEngine::createDepthImage() {
 	depthImageTransitionCommandBufferAllocateInfo.commandPool = depthImageTransitionCommandPool;
 	depthImageTransitionCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	depthImageTransitionCommandBufferAllocateInfo.commandBufferCount = 1;
-	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &depthImageTransitionCommandBufferAllocateInfo, &depthImageTransitionCommandBuffer));
+	VK_CHECK(vkAllocateCommandBuffers(m_device, &depthImageTransitionCommandBufferAllocateInfo, &depthImageTransitionCommandBuffer));
 
 	VkCommandBufferBeginInfo depthImageTransitionBeginInfo = {};
 	depthImageTransitionBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1616,7 +1616,7 @@ void RenderingEngine::createDepthImage() {
 	depthImageTransitionFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	depthImageTransitionFenceCreateInfo.pNext = nullptr;
 	depthImageTransitionFenceCreateInfo.flags = 0;
-	TUTORIEL_VK_CHECK(vkCreateFence(m_device, &depthImageTransitionFenceCreateInfo, nullptr, &depthImageTransitionFence));
+	VK_CHECK(vkCreateFence(m_device, &depthImageTransitionFenceCreateInfo, nullptr, &depthImageTransitionFence));
 
 	VkSubmitInfo depthImageTransitionSubmitInfo = {};
 	depthImageTransitionSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1628,8 +1628,8 @@ void RenderingEngine::createDepthImage() {
 	depthImageTransitionSubmitInfo.pCommandBuffers = &depthImageTransitionCommandBuffer;
 	depthImageTransitionSubmitInfo.signalSemaphoreCount = 0;
 	depthImageTransitionSubmitInfo.pSignalSemaphores = nullptr;
-	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &depthImageTransitionSubmitInfo, depthImageTransitionFence));
-	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &depthImageTransitionFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
+	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &depthImageTransitionSubmitInfo, depthImageTransitionFence));
+	VK_CHECK(vkWaitForFences(m_device, 1, &depthImageTransitionFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
 
 	vkDestroyFence(m_device, depthImageTransitionFence, nullptr);
 	vkDestroyCommandPool(m_device, depthImageTransitionCommandPool, nullptr);
@@ -1785,12 +1785,12 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	VmaAllocationCreateInfo vertexAndIndexStagingBufferAllocationCreateInfo = {};
 	vertexAndIndexStagingBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
 	vertexAndIndexStagingBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-	TUTORIEL_VK_CHECK(vmaCreateBuffer(m_allocator, &vertexAndIndexStagingBufferCreateInfo, &vertexAndIndexStagingBufferAllocationCreateInfo, &vertexAndIndexStagingBuffer, &vertexAndIndexStagingBufferAllocation, nullptr));
+	VK_CHECK(vmaCreateBuffer(m_allocator, &vertexAndIndexStagingBufferCreateInfo, &vertexAndIndexStagingBufferAllocationCreateInfo, &vertexAndIndexStagingBuffer, &vertexAndIndexStagingBufferAllocation, nullptr));
 
 	// Copie des donnees CPU vers le Staging Buffer
 	void* data;
 
-	TUTORIEL_VK_CHECK(vmaMapMemory(m_allocator, vertexAndIndexStagingBufferAllocation, &data));
+	VK_CHECK(vmaMapMemory(m_allocator, vertexAndIndexStagingBufferAllocation, &data));
 	memcpy(data, vertices.data(), vertices.size() * sizeof(Vertex));
 	memcpy(reinterpret_cast<char*>(data) + (vertices.size() * sizeof(Vertex)), indices.data(), indices.size() * sizeof(uint32_t));
 	vmaUnmapMemory(m_allocator, vertexAndIndexStagingBufferAllocation);
@@ -1803,7 +1803,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	buffersCopyCommandPoolCreateInfo.pNext = nullptr;
 	buffersCopyCommandPoolCreateInfo.flags = 0;
 	buffersCopyCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &buffersCopyCommandPoolCreateInfo, nullptr, &buffersCopyCommandPool));
+	VK_CHECK(vkCreateCommandPool(m_device, &buffersCopyCommandPoolCreateInfo, nullptr, &buffersCopyCommandPool));
 
 	VkCommandBuffer buffersCopyCommandBuffer;
 
@@ -1813,7 +1813,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	buffersCopyCommandBufferAllocateInfo.commandPool = buffersCopyCommandPool;
 	buffersCopyCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	buffersCopyCommandBufferAllocateInfo.commandBufferCount = 1;
-	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &buffersCopyCommandBufferAllocateInfo, &buffersCopyCommandBuffer));
+	VK_CHECK(vkAllocateCommandBuffers(m_device, &buffersCopyCommandBufferAllocateInfo, &buffersCopyCommandBuffer));
 
 	VkCommandBufferBeginInfo vertexAndIndexBuffersCopyBeginInfo = {};
 	vertexAndIndexBuffersCopyBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1842,7 +1842,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	buffersCopyFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	buffersCopyFenceCreateInfo.pNext = nullptr;
 	buffersCopyFenceCreateInfo.flags = 0;
-	TUTORIEL_VK_CHECK(vkCreateFence(m_device, &buffersCopyFenceCreateInfo, nullptr, &buffersCopyFence));
+	VK_CHECK(vkCreateFence(m_device, &buffersCopyFenceCreateInfo, nullptr, &buffersCopyFence));
 
 	VkSubmitInfo buffersCopySubmitInfo = {};
 	buffersCopySubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1854,8 +1854,8 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	buffersCopySubmitInfo.pCommandBuffers = &buffersCopyCommandBuffer;
 	buffersCopySubmitInfo.signalSemaphoreCount = 0;
 	buffersCopySubmitInfo.pSignalSemaphores = nullptr;
-	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &buffersCopySubmitInfo, buffersCopyFence));
-	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &buffersCopyFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
+	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &buffersCopySubmitInfo, buffersCopyFence));
+	VK_CHECK(vkWaitForFences(m_device, 1, &buffersCopyFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
 
 	// Destruction des ressources utilisees pour la copie des buffers
 	vkDestroyFence(m_device, buffersCopyFence, nullptr);
@@ -1910,7 +1910,7 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	VmaAllocationCreateInfo textureImageAllocationCreateInfo = {};
 	textureImageAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-	TUTORIEL_VK_CHECK(vmaCreateImage(m_allocator, &textureImageCreateInfo, &textureImageAllocationCreateInfo, &textureImage, &textureImageAllocation, nullptr));
+	VK_CHECK(vmaCreateImage(m_allocator, &textureImageCreateInfo, &textureImageAllocationCreateInfo, &textureImage, &textureImageAllocation, nullptr));
 
 	// Creation de la vue de l'image de la texture
 	VkImageView textureImageView;
@@ -1931,7 +1931,7 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	textureImageViewCreateInfo.subresourceRange.levelCount = textureImageCreateInfo.mipLevels;
 	textureImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 	textureImageViewCreateInfo.subresourceRange.layerCount = 1;
-	TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &textureImageViewCreateInfo, nullptr, &textureImageView));
+	VK_CHECK(vkCreateImageView(m_device, &textureImageViewCreateInfo, nullptr, &textureImageView));
 
 	// Creation du staging buffer
 	VkBuffer textureStagingBuffer;
@@ -1950,10 +1950,10 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	VmaAllocationCreateInfo textureStagingBufferAllocationCreateInfo = {};
 	textureStagingBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
 	textureStagingBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-	TUTORIEL_VK_CHECK(vmaCreateBuffer(m_allocator, &textureStagingBufferCreateInfo, &textureStagingBufferAllocationCreateInfo, &textureStagingBuffer, &textureStagingBufferAllocation, nullptr));
+	VK_CHECK(vmaCreateBuffer(m_allocator, &textureStagingBufferCreateInfo, &textureStagingBufferAllocationCreateInfo, &textureStagingBuffer, &textureStagingBufferAllocation, nullptr));
 
 	void* data;
-	TUTORIEL_VK_CHECK(vmaMapMemory(m_allocator, textureStagingBufferAllocation, &data));
+	VK_CHECK(vmaMapMemory(m_allocator, textureStagingBufferAllocation, &data));
 	memcpy(data, pixels, static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
 	vmaUnmapMemory(m_allocator, textureStagingBufferAllocation);
 
@@ -1967,7 +1967,7 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	createTextureCommandPoolCreateInfo.pNext = nullptr;
 	createTextureCommandPoolCreateInfo.flags = 0;
 	createTextureCommandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-	TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &createTextureCommandPoolCreateInfo, nullptr, &createTextureCommandPool));
+	VK_CHECK(vkCreateCommandPool(m_device, &createTextureCommandPoolCreateInfo, nullptr, &createTextureCommandPool));
 
 	VkCommandBuffer createTextureCommandBuffer;
 
@@ -1977,7 +1977,7 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	createTextureCommandBufferAllocateInfo.commandPool = createTextureCommandPool;
 	createTextureCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	createTextureCommandBufferAllocateInfo.commandBufferCount = 1;
-	TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &createTextureCommandBufferAllocateInfo, &createTextureCommandBuffer));
+	VK_CHECK(vkAllocateCommandBuffers(m_device, &createTextureCommandBufferAllocateInfo, &createTextureCommandBuffer));
 
 	VkCommandBufferBeginInfo createTextureCommandBufferBeginInfo = {};
 	createTextureCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -2111,7 +2111,7 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	buffersCopyFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	buffersCopyFenceCreateInfo.pNext = nullptr;
 	buffersCopyFenceCreateInfo.flags = 0;
-	TUTORIEL_VK_CHECK(vkCreateFence(m_device, &buffersCopyFenceCreateInfo, nullptr, &buffersCopyFence));
+	VK_CHECK(vkCreateFence(m_device, &buffersCopyFenceCreateInfo, nullptr, &buffersCopyFence));
 
 	VkSubmitInfo buffersCopySubmitInfo = {};
 	buffersCopySubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -2123,8 +2123,8 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	buffersCopySubmitInfo.pCommandBuffers = &createTextureCommandBuffer;
 	buffersCopySubmitInfo.signalSemaphoreCount = 0;
 	buffersCopySubmitInfo.pSignalSemaphores = nullptr;
-	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &buffersCopySubmitInfo, buffersCopyFence));
-	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &buffersCopyFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
+	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &buffersCopySubmitInfo, buffersCopyFence));
+	VK_CHECK(vkWaitForFences(m_device, 1, &buffersCopyFence, VK_TRUE, std::numeric_limits<uint64_t>::max()));
 
 	vkDestroyFence(m_device, buffersCopyFence, nullptr);
 	vkDestroyCommandPool(m_device, createTextureCommandPool, nullptr);
