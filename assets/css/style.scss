@@ -10,6 +10,8 @@ body {
 
 .markdown-body .highlight pre, .markdown-body pre {
 	background-color: #262626;
+	white-space: normal;
+	line-break: anywhere;
 }
 
 .markdown-body img {
