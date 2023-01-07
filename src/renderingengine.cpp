@@ -1576,7 +1576,7 @@ void RenderingEngine::createDepthImage() {
 	depthImageTransitionBeginInfo.pNext = nullptr;
 	depthImageTransitionBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	depthImageTransitionBeginInfo.pInheritanceInfo = nullptr;
-	vkBeginCommandBuffer(depthImageTransitionCommandBuffer, &depthImageTransitionBeginInfo);
+	VK_CHECK(vkBeginCommandBuffer(depthImageTransitionCommandBuffer, &depthImageTransitionBeginInfo));
 
 	VkImageMemoryBarrier2 undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier = {};
 	undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -1608,7 +1608,7 @@ void RenderingEngine::createDepthImage() {
 	undefinedToDepthStencilAttachmentOptimalDependencyInfo.pImageMemoryBarriers = &undefinedToDepthStencilAttachmentOptimalImageMemoryBarrier;
 	m_vkCmdPipelineBarrier2KHR(depthImageTransitionCommandBuffer, &undefinedToDepthStencilAttachmentOptimalDependencyInfo);
 
-	vkEndCommandBuffer(depthImageTransitionCommandBuffer);
+	VK_CHECK(vkEndCommandBuffer(depthImageTransitionCommandBuffer));
 
 	VkFence depthImageTransitionFence;
 
@@ -1820,7 +1820,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	vertexAndIndexBuffersCopyBeginInfo.pNext = nullptr;
 	vertexAndIndexBuffersCopyBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vertexAndIndexBuffersCopyBeginInfo.pInheritanceInfo = nullptr;
-	vkBeginCommandBuffer(buffersCopyCommandBuffer, &vertexAndIndexBuffersCopyBeginInfo);
+	VK_CHECK(vkBeginCommandBuffer(buffersCopyCommandBuffer, &vertexAndIndexBuffersCopyBeginInfo));
 
 	VkBufferCopy vertexBufferCopy = {};
 	vertexBufferCopy.srcOffset = 0;
@@ -1834,7 +1834,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	indexBufferCopy.size = indices.size() * sizeof(uint32_t);
 	vkCmdCopyBuffer(buffersCopyCommandBuffer, vertexAndIndexStagingBuffer, m_indexBuffer, 1, &indexBufferCopy);
 
-	vkEndCommandBuffer(buffersCopyCommandBuffer);
+	VK_CHECK(vkEndCommandBuffer(buffersCopyCommandBuffer));
 
 	VkFence buffersCopyFence;
 
@@ -1984,7 +1984,7 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	createTextureCommandBufferBeginInfo.pNext = nullptr;
 	createTextureCommandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	createTextureCommandBufferBeginInfo.pInheritanceInfo = nullptr;
-	vkBeginCommandBuffer(createTextureCommandBuffer, &createTextureCommandBufferBeginInfo);
+	VK_CHECK(vkBeginCommandBuffer(createTextureCommandBuffer, &createTextureCommandBufferBeginInfo));
 
 	VkImageMemoryBarrier2 undefinedToTransferDstOptimalImageMemoryBarrier = {};
 	undefinedToTransferDstOptimalImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -2103,7 +2103,7 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 		mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
 	}
 
-	vkEndCommandBuffer(createTextureCommandBuffer);
+	VK_CHECK(vkEndCommandBuffer(createTextureCommandBuffer));
 
 	VkFence buffersCopyFence;
 
