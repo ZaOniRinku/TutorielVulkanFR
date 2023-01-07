@@ -60,7 +60,7 @@ void HelloTriangle::init() {
 #endif
 	instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
 	instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
-	TUTORIEL_VK_CHECK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance));
+	VK_CHECK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance));
 
 	// Creation du messager de debug
 	VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {};
@@ -76,7 +76,7 @@ void HelloTriangle::init() {
 	debugMessengerCreateInfo.pUserData = nullptr;
 
 	auto createDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
-	TUTORIEL_VK_CHECK(createDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &m_debugMessenger));
+	VK_CHECK(createDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &m_debugMessenger));
 
 	// Creation de la fenetre
 	if (!glfwInit()) {
@@ -96,7 +96,7 @@ void HelloTriangle::init() {
 	surfaceCreateInfo.hwnd = handle;
 
 	auto createWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkCreateWin32SurfaceKHR");
-	TUTORIEL_VK_CHECK(createWin32SurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
+	VK_CHECK(createWin32SurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
 #elif defined(TUTORIEL_VK_OS_LINUX)
 	m_display = XOpenDisplay(NULL);
 	Window handle = glfwGetX11Window(m_window);
@@ -108,7 +108,7 @@ void HelloTriangle::init() {
 	surfaceCreateInfo.window = handle;
 
 	auto createXlibSurfaceKHR = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(m_instance, "vkCreateXlibSurfaceKHR");
-	TUTORIEL_VK_CHECK(createXlibSurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
+	VK_CHECK(createXlibSurfaceKHR(m_instance, &surfaceCreateInfo, nullptr, &m_surface));
 #endif
 
 	// Selection du GPU
@@ -235,7 +235,7 @@ void HelloTriangle::init() {
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
 	deviceCreateInfo.pEnabledFeatures = nullptr;
-	TUTORIEL_VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
+	VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
 
 	// Recuperation de la queue creee
 	vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
@@ -263,10 +263,10 @@ void HelloTriangle::init() {
 	commandBufferAllocateInfo.commandBufferCount = 1;
 
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
-		TUTORIEL_VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_renderingCommandPools[i]));
+		VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_renderingCommandPools[i]));
 
 		commandBufferAllocateInfo.commandPool = m_renderingCommandPools[i];
-		TUTORIEL_VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_renderingCommandBuffers[i]));
+		VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_renderingCommandBuffers[i]));
 	}
 
 	// Creation des objets de synchronisation
@@ -285,11 +285,11 @@ void HelloTriangle::init() {
 	semaphoreCreateInfo.flags = 0;
 
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
-		TUTORIEL_VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_fences[i]));
-		TUTORIEL_VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_acquireCompletedSemaphores[i]));
+		VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_fences[i]));
+		VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_acquireCompletedSemaphores[i]));
 	}
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
-		TUTORIEL_VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_renderCompletedSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_renderCompletedSemaphores[i]));
 	}
 
 	// Chargement de fonctions utilisees lors de l'enregistrement des commandes
@@ -302,7 +302,7 @@ void HelloTriangle::update() {
 	// Recuperation des evenements sur les fenetres
 	glfwPollEvents();
 
-	TUTORIEL_VK_CHECK(vkWaitForFences(m_device, 1, &m_fences[m_currentFrameInFlight], VK_TRUE, std::numeric_limits<uint64_t>::max()));
+	VK_CHECK(vkWaitForFences(m_device, 1, &m_fences[m_currentFrameInFlight], VK_TRUE, std::numeric_limits<uint64_t>::max()));
 
 	// Recuperation d'un indice d'une image libre de la swapchain
 	uint32_t imageIndex;
@@ -316,14 +316,14 @@ void HelloTriangle::update() {
 	}
 
 	// Reinitialisation du command buffer alloue avec le command pool
-	TUTORIEL_VK_CHECK(vkResetCommandPool(m_device, m_renderingCommandPools[m_currentFrameInFlight], 0));
+	VK_CHECK(vkResetCommandPool(m_device, m_renderingCommandPools[m_currentFrameInFlight], 0));
 
 	// Debut de l'enregistrement du command buffer
 	VkCommandBufferBeginInfo commandBufferBeginInfo = {};
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	commandBufferBeginInfo.pNext = nullptr;
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	TUTORIEL_VK_CHECK(vkBeginCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight], &commandBufferBeginInfo));
+	VK_CHECK(vkBeginCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight], &commandBufferBeginInfo));
 
 	// Transition de layout VK_IMAGE_LAYOUT_UNDEFINED -> VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	VkImageMemoryBarrier2 undefinedToColorAttachmentOptimalImageMemoryBarrier = {};
@@ -428,10 +428,10 @@ void HelloTriangle::update() {
 	m_vkCmdPipelineBarrier2KHR(m_renderingCommandBuffers[m_currentFrameInFlight], &colorAttachmentOptimalToPresentSrcDependencyInfo);
 
 	// Fin de l'enregistrement du command buffer
-	TUTORIEL_VK_CHECK(vkEndCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight]));
+	VK_CHECK(vkEndCommandBuffer(m_renderingCommandBuffers[m_currentFrameInFlight]));
 
 	// De-signalement de la fence
-	TUTORIEL_VK_CHECK(vkResetFences(m_device, 1, &m_fences[m_currentFrameInFlight]));
+	VK_CHECK(vkResetFences(m_device, 1, &m_fences[m_currentFrameInFlight]));
 
 	// Soumission des commandes a la queue du GPU
 	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -445,7 +445,7 @@ void HelloTriangle::update() {
 	submitInfo.pCommandBuffers = &m_renderingCommandBuffers[m_currentFrameInFlight];
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &m_renderCompletedSemaphores[imageIndex];
-	TUTORIEL_VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_fences[m_currentFrameInFlight]));
+	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_fences[m_currentFrameInFlight]));
 
 	// Presentation de l'image de la swapchain a l'ecran
 	VkPresentInfoKHR presentInfo = {};
@@ -472,7 +472,7 @@ void HelloTriangle::update() {
 
 void HelloTriangle::destroy() {
 	// Attente que la queue du GPU ne soit plus utilisee
-	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+	VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
 
 	// Destruction des objets de synchronisation
 	for (uint32_t i = 0; i < m_swapchainImageCount; i++) {
@@ -531,9 +531,9 @@ bool HelloTriangle::shouldClose() {
 
 bool HelloTriangle::explicitLayerAvailable(const char* layerName) {
 	uint32_t instanceLayerPropertyCount;
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, nullptr));
+	VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, nullptr));
 	std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerPropertyCount);
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, instanceLayerProperties.data()));
+	VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, instanceLayerProperties.data()));
 
 	for (const VkLayerProperties& availableLayer : instanceLayerProperties) {
 		if (strcmp(availableLayer.layerName, layerName) == 0) {
@@ -547,9 +547,9 @@ bool HelloTriangle::explicitLayerAvailable(const char* layerName) {
 
 bool HelloTriangle::instanceExtensionAvailable(const char* extensionName) {
 	uint32_t instanceExtensionPropertyCount;
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, nullptr));
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, nullptr));
 	std::vector<VkExtensionProperties> instanceExtensionProperties(instanceExtensionPropertyCount);
-	TUTORIEL_VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, instanceExtensionProperties.data()));
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionPropertyCount, instanceExtensionProperties.data()));
 
 	for (const VkExtensionProperties& availableExtension : instanceExtensionProperties) {
 		if (strcmp(availableExtension.extensionName, extensionName) == 0) {
@@ -563,9 +563,9 @@ bool HelloTriangle::instanceExtensionAvailable(const char* extensionName) {
 
 bool HelloTriangle::deviceExtensionAvailable(const char* extensionName) {
 	uint32_t deviceExtensionPropertyCount;
-	TUTORIEL_VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, nullptr));
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, nullptr));
 	std::vector<VkExtensionProperties> deviceExtensionProperties(deviceExtensionPropertyCount);
-	TUTORIEL_VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, deviceExtensionProperties.data()));
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &deviceExtensionPropertyCount, deviceExtensionProperties.data()));
 
 	for (const VkExtensionProperties& availableExtension : deviceExtensionProperties) {
 		if (strcmp(availableExtension.extensionName, extensionName) == 0) {
@@ -593,7 +593,7 @@ void HelloTriangle::createGraphicsPipeline() {
 	vertexShaderModuleCreateInfo.flags = 0;
 	vertexShaderModuleCreateInfo.codeSize = vertexShaderSpv.size() * sizeof(uint32_t);
 	vertexShaderModuleCreateInfo.pCode = vertexShaderSpv.data();
-	TUTORIEL_VK_CHECK(vkCreateShaderModule(m_device, &vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule));
+	VK_CHECK(vkCreateShaderModule(m_device, &vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule));
 
 	VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo = {};
 	vertexShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -611,7 +611,7 @@ void HelloTriangle::createGraphicsPipeline() {
 	fragmentShaderModuleCreateInfo.flags = 0;
 	fragmentShaderModuleCreateInfo.codeSize = fragmentShaderSpv.size() * sizeof(uint32_t);
 	fragmentShaderModuleCreateInfo.pCode = fragmentShaderSpv.data();
-	TUTORIEL_VK_CHECK(vkCreateShaderModule(m_device, &fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule));
+	VK_CHECK(vkCreateShaderModule(m_device, &fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule));
 
 	VkPipelineShaderStageCreateInfo fragmentShaderStageCreateInfo = {};
 	fragmentShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -746,7 +746,7 @@ void HelloTriangle::createGraphicsPipeline() {
 	pipelineLayoutCreateInfo.pSetLayouts = nullptr;
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-	TUTORIEL_VK_CHECK(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_graphicsPipelineLayout));
+	VK_CHECK(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_graphicsPipelineLayout));
 
 	// Creation du pipeline graphique
 	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {};
@@ -769,7 +769,7 @@ void HelloTriangle::createGraphicsPipeline() {
 	graphicsPipelineCreateInfo.subpass = 0;
 	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	graphicsPipelineCreateInfo.basePipelineIndex = 0;
-	TUTORIEL_VK_CHECK(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_graphicsPipeline));
+	VK_CHECK(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &m_graphicsPipeline));
 
 	// Destruction des modules de shaders
 	vkDestroyShaderModule(m_device, fragmentShaderModule, nullptr);
@@ -1059,11 +1059,11 @@ void HelloTriangle::createSwapchain(VkSwapchainKHR oldSwapchain) {
 	swapchainCreateInfo.presentMode = swapchainPresentMode;
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.oldSwapchain = oldSwapchain;
-	TUTORIEL_VK_CHECK(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain));
+	VK_CHECK(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain));
 
-	TUTORIEL_VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, nullptr));
+	VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, nullptr));
 	m_swapchainImages.resize(m_swapchainImageCount);
-	TUTORIEL_VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, m_swapchainImages.data()));
+	VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, m_swapchainImages.data()));
 
 	// Le nombre de frames-in-flight ne doit pas etre superieur au nombre d'images dans la swapchain
 	if (m_framesInFlight > m_swapchainImageCount) {
@@ -1088,13 +1088,13 @@ void HelloTriangle::createSwapchain(VkSwapchainKHR oldSwapchain) {
 		swapchainImageViewCreateInfo.subresourceRange.levelCount = 1;
 		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1;
-		TUTORIEL_VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
+		VK_CHECK(vkCreateImageView(m_device, &swapchainImageViewCreateInfo, nullptr, &m_swapchainImageViews[i]));
 	}
 }
 
 void HelloTriangle::onResize() {
 	// Attente que la swapchain soit libre
-	TUTORIEL_VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
+	VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
 
 	int windowWidth;
 	int windowHeight;
