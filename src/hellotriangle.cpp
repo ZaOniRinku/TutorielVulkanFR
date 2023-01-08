@@ -957,6 +957,7 @@ std::vector<uint32_t> HelloTriangle::compileShaderFile(const std::string& shader
 	std::string preprocess;
 	if (!shader.preprocess(&defaultTBuiltInResource, defaultVersion, ENoProfile, false, false, messages, &preprocess, includer)) {
 		std::cout << "Le preprocessing du shader a echoue.\n" << std::string(shader.getInfoLog()) << std::endl;
+		exit(1);
 	}
 
 	// Parse
@@ -964,6 +965,7 @@ std::vector<uint32_t> HelloTriangle::compileShaderFile(const std::string& shader
 	shader.setStrings(&preprocessCharPtr, 1);
 	if (!shader.parse(&defaultTBuiltInResource, defaultVersion, false, messages)) {
 		std::cout << "Le parsing du shader a echoue.\n" << std::string(shader.getInfoLog()) << std::endl;
+		exit(1);
 	}
 
 	// Link
@@ -971,6 +973,7 @@ std::vector<uint32_t> HelloTriangle::compileShaderFile(const std::string& shader
 	program.addShader(&shader);
 	if (!program.link(messages)) {
 		std::cout << "Le linking du shader a echoue.\n" << std::string(shader.getInfoLog()) << std::endl;
+		exit(1);
 	}
 
 	// Compile
