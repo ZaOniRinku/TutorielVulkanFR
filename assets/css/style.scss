@@ -9,7 +9,7 @@ body {
 }
 
 .markdown-body .highlight pre, .markdown-body pre {
-	background-color: #2b2b2b;
+	background-color: #272727;
 	line-break: anywhere;
 }
 
@@ -28,6 +28,14 @@ body {
 	background-color: rgba(255, 255, 255, 0.08);
 }
 
+.text-gray {
+	color: #9ea7b0 !important;
+}
+
+a {
+	color: #72b2fb;
+}
+
 .highlight .c1 {
 	color: #62b950;
 }
@@ -37,7 +45,7 @@ body {
 }
 
 .highlight .kt {
-	color: #7a95e8;
+	color: #93acf9;
 }
 
 .highlight .mi {
@@ -68,10 +76,6 @@ body {
 	color: #acacac;
 }
 
-.text-gray {
-	color: #9ea7b0 !important;
-}
-
-a {
-	color: #5ca1f0;
+.highlight .s {
+	color: #ff5e6d;
 }
