@@ -586,7 +586,8 @@ void RenderingEngine::update() {
 		size_t offset = (i * (sizeof(nml::mat4) + sizeof(nml::vec4)));
 
 		memcpy(reinterpret_cast<char*>(data) + offset, objectModel.data(), sizeof(nml::mat4));
-		memcpy(reinterpret_cast<char*>(data) + offset + sizeof(nml::mat4), &m_objects[i].textureIndex, sizeof(uint32_t));
+		const uint32_t textureIndex = (m_objects[i].textureIndex < m_textureImages.size()) ? m_objects[i].textureIndex : 0;
+		memcpy(reinterpret_cast<char*>(data) + offset + sizeof(nml::mat4), &textureIndex, sizeof(uint32_t));
 	}
 	vmaUnmapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight]);
 
