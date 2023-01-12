@@ -389,28 +389,6 @@ void RenderingEngine::init() {
 	vertexAndIndexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	VK_CHECK(vmaCreateBuffer(m_allocator, &vertexAndIndexBufferCreateInfo, &vertexAndIndexBufferAllocationCreateInfo, &m_indexBuffer, &m_indexBufferAllocation, nullptr));
 
-	// Creation de l'echantillonneur de textures
-	VkSamplerCreateInfo textureSamplerCreateInfo = {};
-	textureSamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	textureSamplerCreateInfo.pNext = nullptr;
-	textureSamplerCreateInfo.flags = 0;
-	textureSamplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-	textureSamplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-	textureSamplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	textureSamplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	textureSamplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	textureSamplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	textureSamplerCreateInfo.mipLodBias = 0.0f;
-	textureSamplerCreateInfo.anisotropyEnable = VK_TRUE;
-	textureSamplerCreateInfo.maxAnisotropy = 16.0f;
-	textureSamplerCreateInfo.compareEnable = VK_FALSE;
-	textureSamplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
-	textureSamplerCreateInfo.minLod = 0.0f;
-	textureSamplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
-	textureSamplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	textureSamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-	VK_CHECK(vkCreateSampler(m_device, &textureSamplerCreateInfo, nullptr, &m_textureSampler));
-
 	// Creation des buffers de camera
 	m_cameraBuffers.resize(m_framesInFlight);
 	m_cameraBufferAllocations.resize(m_framesInFlight);
@@ -455,12 +433,6 @@ void RenderingEngine::init() {
 		VK_CHECK(vmaCreateBuffer(m_allocator, &objectsBufferCreateInfo, &objectsBufferAllocationCreateInfo, &m_objectsBuffers[i], &m_objectsBufferAllocations[i], nullptr));
 	}
 
-	// Chargement d'une texture qui assure que le binding ne sera pas vide
-	loadTexture("../models/no_texture.jpg");
-
-	// Creation de la scene
-	createScene();
-
 	// Creation du descriptor pool
 	VkDescriptorPoolSize cameraDescriptorPoolSize = {};
 	cameraDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -502,7 +474,6 @@ void RenderingEngine::init() {
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 		VkDescriptorBufferInfo cameraDescriptorBufferInfo;
 		VkDescriptorBufferInfo objectsDescriptorBufferInfo;
-		std::vector<VkDescriptorImageInfo> texturesDescriptorImageInfos;
 
 		cameraDescriptorBufferInfo.buffer = m_cameraBuffers[i];
 		cameraDescriptorBufferInfo.offset = 0;
@@ -538,31 +509,44 @@ void RenderingEngine::init() {
 		objectsDescriptorWriteDescriptorSet.pTexelBufferView = nullptr;
 		writeDescriptorSets.push_back(objectsDescriptorWriteDescriptorSet);
 
-		texturesDescriptorImageInfos.resize(m_textureImages.size());
-		for (size_t j = 0; j < m_textureImages.size(); j++) {
-			texturesDescriptorImageInfos[j].sampler = m_textureSampler;
-			texturesDescriptorImageInfos[j].imageView = m_textureImageViews[j];
-			texturesDescriptorImageInfos[j].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		}
-
-		VkWriteDescriptorSet texturesDescriptorWriteDescriptorSet = {};
-		texturesDescriptorWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		texturesDescriptorWriteDescriptorSet.pNext = nullptr;
-		texturesDescriptorWriteDescriptorSet.dstSet = m_descriptorSets[i];
-		texturesDescriptorWriteDescriptorSet.dstBinding = 2;
-		texturesDescriptorWriteDescriptorSet.dstArrayElement = 0;
-		texturesDescriptorWriteDescriptorSet.descriptorCount = static_cast<uint32_t>(texturesDescriptorImageInfos.size());
-		texturesDescriptorWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		texturesDescriptorWriteDescriptorSet.pImageInfo = texturesDescriptorImageInfos.data();
-		texturesDescriptorWriteDescriptorSet.pBufferInfo = nullptr;
-		texturesDescriptorWriteDescriptorSet.pTexelBufferView = nullptr;
-		writeDescriptorSets.push_back(texturesDescriptorWriteDescriptorSet);
-
 		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+	}
+
+	m_descriptorSetsNeedUpdate.resize(m_framesInFlight);
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		m_descriptorSetsNeedUpdate[i] = false;
 	}
 
 	// Creation de l'image de profondeur
 	createDepthImage();
+
+	// Creation de l'echantillonneur de textures
+	VkSamplerCreateInfo textureSamplerCreateInfo = {};
+	textureSamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	textureSamplerCreateInfo.pNext = nullptr;
+	textureSamplerCreateInfo.flags = 0;
+	textureSamplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+	textureSamplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+	textureSamplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	textureSamplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	textureSamplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	textureSamplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	textureSamplerCreateInfo.mipLodBias = 0.0f;
+	textureSamplerCreateInfo.anisotropyEnable = VK_TRUE;
+	textureSamplerCreateInfo.maxAnisotropy = 16.0f;
+	textureSamplerCreateInfo.compareEnable = VK_FALSE;
+	textureSamplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
+	textureSamplerCreateInfo.minLod = 0.0f;
+	textureSamplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
+	textureSamplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	textureSamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+	VK_CHECK(vkCreateSampler(m_device, &textureSamplerCreateInfo, nullptr, &m_textureSampler));
+
+	// Chargement d'une texture par defaut
+	loadTexture("../models/no_texture.jpg");
+
+	// Creation de la scene
+	createScene();
 }
 
 void RenderingEngine::update() {
@@ -582,7 +566,7 @@ void RenderingEngine::update() {
 		exit(1);
 	}
 
-	// Mise à jour du buffer de caméra
+	// Mise a jour du buffer de camera
 	const float toRad = 3.1415926535897932384626433832795f / 180.0f;
 	nml::mat4 cameraView = nml::lookAtRH(nml::vec3(0.0f, 2.0f, -3.0f), nml::vec3(0.0f), nml::vec3(0.0f, 1.0f, 0.0));
 	nml::mat4 cameraProjection = nml::perspectiveRH(90.0f * toRad, m_viewport.width / m_viewport.height, 0.05f, 100.0f);
@@ -594,7 +578,7 @@ void RenderingEngine::update() {
 	memcpy(data, cameraMatrices.data(), sizeof(nml::mat4) * 2);
 	vmaUnmapMemory(m_allocator, m_cameraBufferAllocations[m_currentFrameInFlight]);
 
-	// Mise à jour des buffers des objets
+	// Mise a jour du buffer des objets
 	VK_CHECK(vmaMapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight], &data));
 	for (size_t i = 0; i < m_objects.size(); i++) {
 		nml::mat4 objectModel = nml::translate(m_objects[i].position) * nml::rotate(m_objects[i].rotation.x, nml::vec3(1.0f, 0.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.y, nml::vec3(0.0f, 1.0f, 0.0f)) * nml::rotate(m_objects[i].rotation.z, nml::vec3(0.0f, 0.0f, 1.0f)) * nml::scale(m_objects[i].scale);
@@ -605,6 +589,13 @@ void RenderingEngine::update() {
 		memcpy(reinterpret_cast<char*>(data) + offset + sizeof(nml::mat4), &m_objects[i].textureIndex, sizeof(uint32_t));
 	}
 	vmaUnmapMemory(m_allocator, m_objectsBufferAllocations[m_currentFrameInFlight]);
+
+	// Mise a jour du descriptor set si necessaire
+	if (m_descriptorSetsNeedUpdate[m_currentFrameInFlight]) {
+		updateDescriptorSet(m_currentFrameInFlight);
+
+		m_descriptorSetsNeedUpdate[m_currentFrameInFlight] = false;
+	}
 
 	// Reinitialisation du command buffer alloue avec le command pool
 	VK_CHECK(vkResetCommandPool(m_device, m_renderingCommandPools[m_currentFrameInFlight], 0));
@@ -794,6 +785,15 @@ void RenderingEngine::destroy() {
 	// Destruction du descriptor pool
 	vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
 
+	// Destruction des images de textures et de leurs vues
+	for (size_t i = 0; i < m_textureImages.size(); i++) {
+		vkDestroyImageView(m_device, m_textureImageViews[i], nullptr);
+		vmaDestroyImage(m_allocator, m_textureImages[i], m_textureImageAllocations[i]);
+	}
+
+	// Destruction de l'echantillonneur des textures
+	vkDestroySampler(m_device, m_textureSampler, nullptr);
+
 	// Destruction des buffers d'objets
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
 		vmaDestroyBuffer(m_allocator, m_objectsBuffers[i], m_objectsBufferAllocations[i]);
@@ -803,15 +803,6 @@ void RenderingEngine::destroy() {
 	for (uint32_t i = 0; i < m_framesInFlight; i++) {
 		vmaDestroyBuffer(m_allocator, m_cameraBuffers[i], m_cameraBufferAllocations[i]);
 	}
-
-	// Destruction des images de textures et de leurs vues
-	for (size_t i = 0; i < m_textureImages.size(); i++) {
-		vkDestroyImageView(m_device, m_textureImageViews[i], nullptr);
-		vmaDestroyImage(m_allocator, m_textureImages[i], m_textureImageAllocations[i]);
-	}
-
-	// Destruction de l'echantillonneur
-	vkDestroySampler(m_device, m_textureSampler, nullptr);
 
 	// Destruction des vertex et index buffers
 	vmaDestroyBuffer(m_allocator, m_indexBuffer, m_indexBufferAllocation);
@@ -1638,6 +1629,30 @@ void RenderingEngine::createDepthImage() {
 	vkDestroyCommandPool(m_device, depthImageTransitionCommandPool, nullptr);
 }
 
+void RenderingEngine::updateDescriptorSet(uint32_t frameInFlight) {
+	// Mise a jour du descriptor set
+	std::vector<VkDescriptorImageInfo> texturesDescriptorImageInfos(m_textureImages.size());
+	for (size_t j = 0; j < m_textureImages.size(); j++) {
+		texturesDescriptorImageInfos[j].sampler = m_textureSampler;
+		texturesDescriptorImageInfos[j].imageView = m_textureImageViews[j];
+		texturesDescriptorImageInfos[j].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+
+	VkWriteDescriptorSet texturesDescriptorWriteDescriptorSet = {};
+	texturesDescriptorWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	texturesDescriptorWriteDescriptorSet.pNext = nullptr;
+	texturesDescriptorWriteDescriptorSet.dstSet = m_descriptorSets[frameInFlight];
+	texturesDescriptorWriteDescriptorSet.dstBinding = 2;
+	texturesDescriptorWriteDescriptorSet.dstArrayElement = 0;
+	texturesDescriptorWriteDescriptorSet.descriptorCount = static_cast<uint32_t>(texturesDescriptorImageInfos.size());
+	texturesDescriptorWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	texturesDescriptorWriteDescriptorSet.pImageInfo = texturesDescriptorImageInfos.data();
+	texturesDescriptorWriteDescriptorSet.pBufferInfo = nullptr;
+	texturesDescriptorWriteDescriptorSet.pTexelBufferView = nullptr;
+
+	vkUpdateDescriptorSets(m_device, 1, &texturesDescriptorWriteDescriptorSet, 0, nullptr);
+}
+
 uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -1741,7 +1756,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 				tmpIndices.push_back(uniqueVertices[tokens[i]]);
 			}
 
-			// Une face peut être un triangle ou un rectangle
+			// Une face peut etre un triangle ou un rectangle
 			// Triangle
 			if (tmpIndices.size() == 3) {
 				indices.insert(indices.end(), std::make_move_iterator(tmpIndices.begin()), std::make_move_iterator(tmpIndices.end()));
@@ -1764,7 +1779,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 	// Fermeture du fichier
 	file.close();
 
-	// Ajout du maillage à la liste
+	// Ajout du maillage a la liste
 	Mesh mesh;
 	mesh.indexCount = static_cast<uint32_t>(indices.size());
 	mesh.firstIndex = m_currentIndexOffset;
@@ -2136,6 +2151,11 @@ uint32_t RenderingEngine::loadTexture(const std::string& textureFilePath) {
 	m_textureImages.push_back(textureImage);
 	m_textureImageAllocations.push_back(textureImageAllocation);
 	m_textureImageViews.push_back(textureImageView);
+
+	// Les descriptor sets doivent etre mis a jour
+	for (uint32_t i = 0; i < m_framesInFlight; i++) {
+		m_descriptorSetsNeedUpdate[i] = true;
+	}
 
 	return static_cast<uint32_t>(m_textureImages.size() - 1);
 }

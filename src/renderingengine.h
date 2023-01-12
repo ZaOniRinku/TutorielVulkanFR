@@ -73,6 +73,8 @@ private:
 
 	void createDepthImage();
 
+	void updateDescriptorSet(uint32_t frameInFlight);
+
 	uint32_t loadModel(const std::string& modelFilePath);
 
 	uint32_t findMipLevels(uint32_t width, uint32_t height);
@@ -107,6 +109,7 @@ private:
 	VkDescriptorSetLayout m_descriptorSetLayout;
 	VkDescriptorPool m_descriptorPool;
 	std::vector<VkDescriptorSet> m_descriptorSets;
+	std::vector<bool> m_descriptorSetsNeedUpdate;
 
 	VkViewport m_viewport;
 	VkRect2D m_scissor;
