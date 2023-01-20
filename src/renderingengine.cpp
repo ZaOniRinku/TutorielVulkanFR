@@ -660,7 +660,6 @@ void RenderingEngine::update() {
 	renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	renderingAttachmentInfo.clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderingAttachmentInfo.clearValue.depthStencil = { 0.0f, 0 };
 
 	VkRenderingAttachmentInfo depthRenderingAttachmentInfo = {};
 	depthRenderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -672,7 +671,6 @@ void RenderingEngine::update() {
 	depthRenderingAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depthRenderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthRenderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depthRenderingAttachmentInfo.clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	depthRenderingAttachmentInfo.clearValue.depthStencil = { 1.0f, 0 };
 
 	VkRenderingInfo renderingInfo = {};
@@ -1705,7 +1703,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 				static_cast<float>(std::atof(tokens[3].c_str()))
 				});
 		}
-		// Coordonnées de textures
+		// Coordonnees de textures
 		else if (tokens[0] == "vt") {
 			uvs.push_back({
 				static_cast<float>(std::atof(tokens[1].c_str())),
@@ -1736,7 +1734,7 @@ uint32_t RenderingEngine::loadModel(const std::string& modelFilePath) {
 							vertex.position[1] = positions[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][1];
 							vertex.position[2] = positions[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][2];
 						}
-						// Indice de coordonnées de texture
+						// Indice de coordonnees de texture
 						else if (j == 1) {
 							vertex.uv[0] = uvs[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][0];
 							vertex.uv[1] = uvs[static_cast<size_t>(std::atoi(valueIndices[j].c_str())) - 1][1];

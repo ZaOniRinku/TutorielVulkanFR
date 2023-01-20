@@ -564,7 +564,6 @@ void HelloTriangle::update() {
 	renderingAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	renderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	renderingAttachmentInfo.clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderingAttachmentInfo.clearValue.depthStencil = { 0.0f, 0 };
 
 	VkRenderingInfo renderingInfo = {};
 	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
