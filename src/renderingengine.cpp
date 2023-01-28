@@ -296,7 +296,7 @@ void RenderingEngine::init() {
 	VkDescriptorSetLayoutBinding texturesDescriptorSetLayoutBinding = {};
 	texturesDescriptorSetLayoutBinding.binding = 2;
 	texturesDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	texturesDescriptorSetLayoutBinding.descriptorCount = 524288;
+	texturesDescriptorSetLayoutBinding.descriptorCount = 131072;
 	texturesDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	texturesDescriptorSetLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -436,15 +436,15 @@ void RenderingEngine::init() {
 	// Creation du descriptor pool
 	VkDescriptorPoolSize cameraDescriptorPoolSize = {};
 	cameraDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	cameraDescriptorPoolSize.descriptorCount = 1;
+	cameraDescriptorPoolSize.descriptorCount = m_framesInFlight;
 
 	VkDescriptorPoolSize objectsDescriptorPoolSize = {};
 	objectsDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	objectsDescriptorPoolSize.descriptorCount = 1;
+	objectsDescriptorPoolSize.descriptorCount = m_framesInFlight;
 
 	VkDescriptorPoolSize texturesDescriptorPoolSize = {};
 	texturesDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	texturesDescriptorPoolSize.descriptorCount = 524288;
+	texturesDescriptorPoolSize.descriptorCount = 131072 * m_framesInFlight;
 
 	std::array<VkDescriptorPoolSize, 3> descriptorPoolSizes = { cameraDescriptorPoolSize, objectsDescriptorPoolSize, texturesDescriptorPoolSize };
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
