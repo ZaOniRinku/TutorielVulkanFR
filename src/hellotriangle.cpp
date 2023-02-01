@@ -1063,7 +1063,9 @@ void HelloTriangle::createSwapchain(VkSwapchainKHR oldSwapchain) {
 	swapchainCreateInfo.oldSwapchain = oldSwapchain;
 	VK_CHECK(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain));
 
-	vkDestroySwapchainKHR(m_device, oldSwapchain, nullptr);
+	if (oldSwapchain != VK_NULL_HANDLE) {
+		vkDestroySwapchainKHR(m_device, oldSwapchain, nullptr);
+	}
 
 	VK_CHECK(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, nullptr));
 	m_swapchainImages.resize(m_swapchainImageCount);
