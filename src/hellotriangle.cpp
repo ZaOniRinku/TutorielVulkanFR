@@ -665,7 +665,7 @@ void HelloTriangle::update() {
 }
 
 void HelloTriangle::destroy() {
-	// Attente que la queue du GPU ne soit plus utilis�e
+	// Attente que la queue du GPU ne soit plus utilisee
 	VK_CHECK(vkQueueWaitIdle(m_graphicsQueue));
 
 	// Destruction des objets de synchronisation
